@@ -43,8 +43,7 @@ def calc_of(img):
            criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.08))
     gray=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     #features_state=features_state[pd.notnull(features_state['cx'])]
-    p0=np.array(features_state.loc[:,'cx':'cy'],dtype='float32').reshape(-1,1,2)
-    #p0=get_c().reshape(-1,1,2)
+    p0=get_c().reshape(-1,1,2)
     p1, st, err = cv2.calcOpticalFlowPyrLK(prev_frame, gray, p0, None, **lk_params)
 
     #cleanning...
@@ -85,8 +84,8 @@ def rotationMatrixToEulerAngles(R) :
 
 def recover_pos():
     global features_state
-    p1=np.array(features_state.loc[:,'sx':'sy'],dtype='float32').reshape(-1,2)
-    p2=np.array(features_state.loc[:,'cx':'cy'],dtype='float32').reshape(-1,2)
+    p1=get_s()
+    p2=get_c()
     E,mask=cv2.findEssentialMat(p1,p2,K,cv2.RANSAC,0.99,1.0)
     ret,R,T,mask=cv2.recoverPose(E,p1,p2,K,mask)
     #clean..
@@ -96,8 +95,8 @@ def recover_pos():
     features_state=features_state[mask.ravel()==255]
     
     print('retake points after cleanning')
-    p1=np.array(features_state.loc[:,'sx':'sy'],dtype='float32').reshape(-1,2)
-    p2=np.array(features_state.loc[:,'cx':'cy'],dtype='float32').reshape(-1,2)
+    p1=get_s()
+    p2=get_c()
     
     print('trangulating..')
     estimated_alt=1.0
@@ -123,8 +122,8 @@ Rvec,Tvec=None,None
 def solve_pos():
     global Rvec,Tvec
     try:
-        p2=np.array(features_state.loc[:,'cx':'cy'],dtype='float32').reshape(-1,2)
-        pts3d=np.array(features_state.loc[:,'ex':'ez'],dtype='float32').reshape(-1,3)
+        p2=get_c()
+        pts3d=get_e()
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
@@ -175,7 +174,7 @@ if __name__=='__main__':
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
                     view3d.send(('camera',(R,Tvec.ravel())))
-                    pts3d=np.array(features_state.loc[:,'ex':'ez'],dtype='float32').reshape(-1,3)
+                    pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
 
         else:

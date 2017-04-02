@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import cv2
 import math
+from scipy.optimize import least_squares
 
 N_FTRS=400
 
@@ -82,7 +83,7 @@ def rotationMatrixToEulerAngles(R) :
 
 
 
-def recover_pos():
+def recover_pos(clean=True):
     global features_state
     p1=get_s()
     p2=get_c()
@@ -90,11 +91,13 @@ def recover_pos():
     ret,R,T,mask=cv2.recoverPose(E,p1,p2,K,mask)
     #clean..
 
-    print('ret=',ret)
-    print('cleanning db')
-    features_state=features_state[mask.ravel()==255]
-    
-    print('retake points after cleanning')
+    if clean:
+        print('cleanning db')
+        features_state=features_state[mask.ravel()==255]
+    return ret,R,T
+   
+def triangulate(R,T):
+    global features_state
     p1=get_s()
     p2=get_c()
     
@@ -119,7 +122,20 @@ def recover_pos():
     print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
 Rvec,Tvec=None,None
-def solve_pos():
+
+def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
+    def cost(X):
+        eRvec=X[:3]
+        eTvec=X[3:6]
+        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
+        ppts2d=ppts2d.reshape(-1,2)
+        return (ppts2d-pts2d).flatten()
+    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point')
+    return True,res.x[:3],res.x[3:6]
+   
+
+
+def solve_pos(estimateR):
     global Rvec,Tvec
     try:
         p2=get_c()
@@ -127,7 +143,8 @@ def solve_pos():
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -167,10 +184,12 @@ if __name__=='__main__':
                 view3d.send(('stop',None))
                 break
             if k==ord('a'):
-                recover_pos()
+                ret,R,T=recover_pos()
+                triangulate(R,T)
                 start_recover=True
             if start_recover:
-                resPnP,Rvec,Tvec=solve_pos()
+                #ret,R,T=recover_pos(clean=False)
+                resPnP,Rvec,Tvec=solve_pos(None)
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
                     view3d.send(('camera',(R,Tvec.ravel())))

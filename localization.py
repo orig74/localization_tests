@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import math
 from scipy.optimize import least_squares
+import time
 
 N_FTRS=400
 
@@ -129,8 +130,26 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
         eTvec=X[3:6]
         ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
-        return (ppts2d-pts2d).flatten()
-    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point')
+
+        #apply radial distance cost
+        if 1:
+            if 0:
+                rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
+                ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
+            else:
+                ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis(0)))
+        else:
+            ret=(ppts2d-pts2d)
+            
+        return ret.flatten()
+    
+    #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
+    bounds=None#([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
+
+
+    tic=time.time()
+    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point',method='lm')#,bounds=bounds)
+    print('X=',res.x,time.time()-tic)
     return True,res.x[:3],res.x[3:6]
    
 
@@ -143,24 +162,30 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
-        if resPnP:
-            print('len=',len(features_state),np.ravel(Tvec))
-        return resPnP,Rvec,Tvec
+        #if resPnP:
+        #    print('len=',len(features_state),np.ravel(Tvec))
+        return resPnP,Rvec,Tvec.flatten()
     except:
         import pdb;pdb.set_trace()
 
 
 
 import viewer
+
+from grabber import file_grabber
+
 if __name__=='__main__':
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
-    cap=cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FPS,60)
+    if 0:
+        cap=cv2.VideoCapture(1)
+        cap.set(cv2.CAP_PROP_FPS,60)
+    else:
+        cap=file_grabber('output.mkv')
     
     view3d=viewer.plot3d()
     view3d.__next__()  
@@ -180,10 +205,15 @@ if __name__=='__main__':
             draw_ftrs(img)
             cv2.imshow('img',img)
             k=cv2.waitKey(1)
+            if k!=-1:
+                print('k=',k%256)
+                k=k%256
             if k==27:
                 view3d.send(('stop',None))
                 break
             if k==ord('a'):
+            #if k!=-1:
+                print('k',k)
                 ret,R,T=recover_pos()
                 triangulate(R,T)
                 start_recover=True

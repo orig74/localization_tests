@@ -5,6 +5,7 @@ import cv2
 import math
 from scipy.optimize import least_squares
 import time
+import traceback,sys
 
 N_FTRS=400
 
@@ -133,18 +134,22 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
                 rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
                 ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
             else:
-                ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis(0)))
+                ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis=0))
         else:
-            ret=(ppts2d-pts2d)
+            ret=ppts2d-pts2d
+            import pdb;pdb.set_trace()
             
         return ret.flatten()
     
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    bounds=None#([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
+    bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
 
 
     tic=time.time()
-    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point',method='lm')#,bounds=bounds)
+    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point',method='lm')#,bounds=bounds)
+    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
+                '3-point',bounds=bounds,method='trf')
+    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'3-point',method='dogbox')
     print('X=',res.x,time.time()-tic)
     return True,res.x[:3],res.x[3:6]
    
@@ -158,15 +163,20 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
         #if resPnP:
         #    print('len=',len(features_state),np.ravel(Tvec))
         return resPnP,Rvec,Tvec.flatten()
-    except:
+    except Exception:
+        print("Exception in user code:")
+        print("-"*60)
+        traceback.print_exc(file=sys.stdout)
+        print("-"*60)
+
         import pdb;pdb.set_trace()
 
 

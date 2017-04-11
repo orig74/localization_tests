@@ -21,10 +21,6 @@ def get_e():
 
 
 colors = np.random.randint(0,255,(2000,3))
-K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
-           5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
-
-distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
 #orb=cv2.ORB_create()
 
 def init_of(img):
@@ -182,11 +178,20 @@ from grabber import file_grabber
 if __name__=='__main__':
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
     if 0:
-        cap=cv2.VideoCapture(1)
-        cap.set(cv2.CAP_PROP_FPS,60)
-    else:
-        cap=file_grabber('output.mkv')
-    
+        K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
+               5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
+
+        distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
+        if 0:
+            cap=cv2.VideoCapture(1)
+            cap.set(cv2.CAP_PROP_FPS,60)
+        else:
+            cap=file_grabber('output.mkv')
+    else: #ue4
+        K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+        distortion=np.zeros(5)
+        cap=file_grabber('output_ue4.avi')
+        
     view3d=viewer.plot3d()
     view3d.__next__()  
 

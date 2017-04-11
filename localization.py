@@ -117,7 +117,7 @@ def triangulate(R,T):
     #import pdb;pdb.set_trace()
     features_state.loc[:,'ex':'ez']=pts3d.reshape(-1,3)
  
-    print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
+    #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
 Rvec,Tvec=None,None
 
@@ -185,7 +185,8 @@ import viewer
 
 from grabber import file_grabber
 
-if __name__=='__main__':
+def main():
+    global K,distortion
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
     if 0:
         K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
@@ -210,6 +211,13 @@ if __name__=='__main__':
     cnt=0
     start_recover=False
     while 1:
+        k=cv2.waitKey(1)
+        if k!=-1:
+            print('k=',k%256)
+            k=k%256
+        if k==27:
+            view3d.send(('stop',None))
+            break
         ret,img=cap.read()
         if ret:
             if cnt==0:
@@ -219,13 +227,6 @@ if __name__=='__main__':
             cnt+=1
             draw_ftrs(img)
             cv2.imshow('img',img)
-            k=cv2.waitKey(1)
-            if k!=-1:
-                print('k=',k%256)
-                k=k%256
-            if k==27:
-                view3d.send(('stop',None))
-                break
             if k==ord('a'):
             #if k!=-1:
                 print('k',k)
@@ -241,11 +242,13 @@ if __name__=='__main__':
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
 
-        else:
-            print('Error no image')
-            break
+        #else:
+        #    print('Error no image')
+            #break
 
  
 
 
 
+if __name__=='__main__':
+    main()

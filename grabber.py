@@ -14,11 +14,14 @@ class file_grabber():
         self.pr=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stdin=subprocess.PIPE)
         #self.size=(640,480)
     def read(self):
-        s=self.pr.stdout.read(self.size[0]*self.size[1]*3)
+        reqlen=self.size[0]*self.size[1]*3
+        s=self.pr.stdout.read(reqlen)
+        if len(s)!=reqlen:
+            return False,None
         return True,np.frombuffer(s,dtype='uint8').reshape(self.size[1],self.size[0],3).copy()
     def __del__(self):
         print('kill ffmpeg...')
-        pr.stdin.write('q\n')
+        self.pr.stdin.write(b'q\n')
         time.sleep(1)
         self.pr.kill()
 

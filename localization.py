@@ -148,8 +148,9 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     tic=time.time()
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point',method='lm')#,bounds=bounds)
     res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-                '3-point',bounds=bounds,method='trf')
-    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'3-point',method='dogbox')
+                '2-point',bounds=bounds,method='trf')
+    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
+    #            '3-point',method='dogbox')
     print('X=',res.x,time.time()-tic)
     return True,res.x[:3],res.x[3:6]
    
@@ -216,7 +217,8 @@ def main():
             print('k=',k%256)
             k=k%256
         if k==27:
-            view3d.send(('stop',None))
+            #if start_recover:
+            #    view3d.send(('stop',None))
             break
         ret,img=cap.read()
         if ret:
@@ -251,4 +253,9 @@ def main():
 
 
 if __name__=='__main__':
-    main()
+    import cProfile
+    cProfile.run('main()','mainstats')
+    import pstats
+    p = pstats.Stats('mainstats')
+    p.strip_dirs().sort_stats('cumulative').print_stats(40)
+

@@ -160,12 +160,20 @@ def solve_pos(estimateR):
     global Rvec,Tvec
     try:
         p2=get_c()
+        #import pdb;pdb.set_trace()
+
+        ### add noise
+
+        #p2=p2+np.random.normal(0,5,p2.shape)
+        ###
+
+
         pts3d=get_e()
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -202,10 +210,16 @@ def main():
     else: #ue4
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         distortion=np.zeros(5)
-        cap=file_grabber('output_ue4.avi')
+        #cap=file_grabber('output_ue4.avi')
+        cap=file_grabber('manuever1.avi')
+        #skip a few frames 
+        for _ in range(10):
+            cap.read()        
+
         
     view3d=viewer.plot3d()
     view3d.__next__()  
+
 
 
 
@@ -257,5 +271,5 @@ if __name__=='__main__':
     cProfile.run('main()','mainstats')
     import pstats
     p = pstats.Stats('mainstats')
-    p.strip_dirs().sort_stats('cumulative').print_stats(40)
+    p.strip_dirs().sort_stats('cumulative').print_stats(100)
 

@@ -135,32 +135,50 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
                 rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
                 ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
             else:
-                ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis=0))
+                #ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis=1))
+                ret=(ppts2d-pts2d).flatten()
+                #import pdb;pdb.set_trace()
+                #ddd
+                #ret=np.mean(np.abs(ppts2d-pts2d),axis=0)#.sum(axis=0)
         else:
-            ret=ppts2d-pts2d
-            import pdb;pdb.set_trace()
+            ret=np.abs(ppts2d-pts2d)
+            mm=pts2d.mean(axis=0)
+            t1=pts2d[:,0]>mm[0]
+            t2=pts2d[:,1]>mm[1]
+            q1=ret[t1 & t2].sum(axis=0)
+            q2=ret[t1 & ~t2].sum(axis=0)
+            q3=ret[~t1 & t2].sum(axis=0)
+            q4=ret[~t1 & ~t2].sum(axis=0)
+            ret=np.hstack((q1,q2,q3,q4))
+            #import pdb;pdb.set_trace()
+            #dddd
             
         return ret.flatten()
     
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    bounds=([-np.inf,-np.inf,-np.inf,-3,-3,-3],[np.inf,np.inf,np.inf,3,3,3])
+    rl=15.0/180.0*np.pi
+    bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
+
+    #bounds=([-np.inf,-np.inf,-np.inf,-3,-3,-3],[np.inf,np.inf,np.inf,3,3,3])
 
 
     tic=time.time()
-    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'2-point',method='lm')#,bounds=bounds)
-    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-                '2-point',bounds=bounds,method='trf')
+    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),
+    #        '2-point',method='lm',xtol=1e-12,ftol=1e-12)#,bounds=bounds)
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-    #            '2-point',method='trf')
+    #            '2-point',bounds=bounds,method='trf', ftol=1e-12)
+    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
+                '2-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
-    #print('X=',res.x,time.time()-tic)
+    #import pdb;pdb.set_trace()
+    print('X=',res.message,time.time()-tic)
     return True,res.x[:3],res.x[3:6]
    
 
 
 def solve_pos(estimateR):
+
     global Rvec,Tvec
     try:
         p2=get_c()
@@ -176,8 +194,8 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -251,7 +269,7 @@ def main():
         if ground_truth:
             try:
                 gt_pos_data=pickle.load(ground_truth)
-                if gt_pos_data['posz']-start_alt > 1.0:
+                if gt_pos_data['posz']-start_alt > 1.5:
                     alt_tresh=gt_pos_data['posz']-start_alt
                 Tvec_gt=np.array([gt_pos_data['posy'],-gt_pos_data['posx'],gt_pos_data['posz']])
                 R_gt=None #TODO

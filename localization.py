@@ -6,6 +6,7 @@ import math
 from scipy.optimize import least_squares
 import time
 import traceback,sys
+import pickle,os
 
 N_FTRS=400
 
@@ -142,7 +143,8 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
         return ret.flatten()
     
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
+    #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
+    bounds=([-np.inf,-np.inf,-np.inf,-3,-3,-3],[np.inf,np.inf,np.inf,3,3,3])
 
 
     tic=time.time()
@@ -150,8 +152,10 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
                 '2-point',bounds=bounds,method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-    #            '3-point',method='dogbox')
-    print('X=',res.x,time.time()-tic)
+    #            '2-point',method='trf')
+    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
+    #            '2-point',method='dogbox')
+    #print('X=',res.x,time.time()-tic)
     return True,res.x[:3],res.x[3:6]
    
 
@@ -172,8 +176,8 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -196,6 +200,7 @@ from grabber import file_grabber
 
 def main():
     global K,distortion
+    ground_truth=None
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
     if 0:
         K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
@@ -211,10 +216,17 @@ def main():
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         distortion=np.zeros(5)
         #cap=file_grabber('output_ue4.avi')
-        cap=file_grabber('manuever1.avi')
+        base_name='manuever2'
+        cap=file_grabber(base_name+'.avi')
+        if os.path.isfile(base_name+'.pkl'):
+            ground_truth=open(base_name+'.pkl','rb')
         #skip a few frames 
-        for _ in range(10):
-            cap.read()        
+        for _ in range(50):
+            cap.read()
+            if ground_truth:
+                gt_pos_data=pickle.load(ground_truth)
+                if gt_pos_data:
+                    start_alt=gt_pos_data['posz']
 
         
     view3d=viewer.plot3d()
@@ -225,16 +237,28 @@ def main():
 
     cnt=0
     start_recover=False
+    alt_tresh=-1
     while 1:
         k=cv2.waitKey(1)
         if k!=-1:
-            print('k=',k%256)
+            #print('k=',k%256)
             k=k%256
         if k==27:
             #if start_recover:
             #    view3d.send(('stop',None))
             break
         ret,img=cap.read()
+        if ground_truth:
+            try:
+                gt_pos_data=pickle.load(ground_truth)
+                if gt_pos_data['posz']-start_alt > 1.0:
+                    alt_tresh=gt_pos_data['posz']-start_alt
+                Tvec_gt=np.array([gt_pos_data['posy'],-gt_pos_data['posx'],gt_pos_data['posz']])
+                R_gt=None #TODO
+                view3d.send(('camera_gt',(R_gt,Tvec_gt)))
+            except EOFError:
+                pass
+            #print('gt=',gt_pos_data)
         if ret:
             if cnt==0:
                 init_of(img)
@@ -244,8 +268,8 @@ def main():
             draw_ftrs(img)
             cv2.imshow('img',img)
             if k==ord('a'):
-            #if k!=-1:
-                print('k',k)
+                alt_tresh=1.0
+            if alt_tresh>0 and not start_recover:
                 ret,R,T=recover_pos()
                 triangulate(R,T)
                 start_recover=True

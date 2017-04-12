@@ -38,6 +38,7 @@ def plot3d():
 
 
     camera_t_data=[[0,0,0]]    
+    camera_t_data_gt=[]    
     cam_pos_h=None
 
     t_start = time.time()
@@ -59,7 +60,20 @@ def plot3d():
                     hdl[0].remove()
             cam_pos_h = [ ax2.plot(range(len(camera_t_data)),camera_t_vec[:,i],c) for i,c in enumerate('rgb') ]
             cam_pos_h.append(ax3.plot(camera_t_vec[:,0],camera_t_vec[:,1],'-b')) 
+           
+            if camera_t_data_gt:
+                camera_t_vec_gt=np.vstack(camera_t_data_gt)
+                camera_t_vec_gt-=camera_t_vec_gt[0] #start at (0,0)
+                cam_pos_h.append(ax3.plot(camera_t_vec_gt[:,0],camera_t_vec_gt[:,1],'-r')) 
+
             fig.canvas.draw()
+
+        if cmd=='camera_gt':
+            R,T=data
+            camera_t_data_gt.append(T)
+            camera_t_data_gt=camera_t_data_gt[-1000:]
+
+
         if cmd=='pts3d':
             if pts3d is not None:
                 pts3d.remove()

@@ -46,25 +46,41 @@ def reader():
     for _ in range(100):
         yield from asyncio.sleep(1/30.0) #30Hz
     ######### climb
+    ps['posx']=-5.0
 
     for _ in range(200):
         ps['posz']+=.01
         yield from asyncio.sleep(1/30.0) #30Hz
     for _ in range(100):
         yield from asyncio.sleep(1/30.0) #30Hz
-    for _ in range(100):
-        ps['posx']+=.01
-        yield from asyncio.sleep(1/30.0) #30Hz
-    for _ in range(100):
-        ps['posy']+=.01
-        yield from asyncio.sleep(1/30.0) #30Hz
-    for _ in range(100):
-        ps['posx']-=.01
-        yield from asyncio.sleep(1/30.0) #30Hz
-    for _ in range(100):
-        ps['posy']-=.01
-        yield from asyncio.sleep(1/30.0) #30Hz
-        
+
+    for rot_pitch,rot_roll in [(0,0),(200,20)]: 
+        for ind in range(400):
+            if ind==0: 
+                step_x=-0.01
+                step_y=0
+            if ind==100:
+                step_x=0
+                step_y=0.01
+            if ind==200:
+                step_x=0.01
+                step_y=0
+            if ind==300:
+                step_x=0
+                step_y=-0.01
+            ps['posx']+=step_x
+            ps['posy']+=step_y
+            
+            if rot_pitch>0:
+                pitch_sign=1 if (ind%rot_pitch)<(rot_pitch//2) else -1
+                ps['pitch']+=pitch_sign*0.1
+            if rot_roll>0:
+                roll_sign=1 if (ind%rot_roll)<(rot_roll//2) else -1
+                ps['roll']+=roll_sign*0.1
+
+
+            yield from asyncio.sleep(1/30.0) #30Hz
+
     while 1:
         yield from asyncio.sleep(1/30.0) #30Hz
 

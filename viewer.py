@@ -73,9 +73,11 @@ def plot3d():
                
                 if camera_t_data_gt:
                     camera_t_vec_gt=np.vstack(camera_t_data_gt)
+                    camera_r_vec_gt=np.vstack(camera_r_data_gt)
                     camera_t_vec_gt-=camera_t_vec_gt[0] #start at (0,0)
                     cam_pos_h.append(ax3.plot(camera_t_vec_gt[:,0],camera_t_vec_gt[:,1],'-r',alpha=0.5)) 
-                    cam_pos_h = [ ax2.plot(range(len(camera_t_data_gt)),camera_t_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
+                    cam_pos_h += [ ax2.plot(range(len(camera_t_data_gt)),camera_t_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
+                    cam_pos_h += [ ax4.plot(range(len(camera_r_data_gt)),camera_r_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
 
                 fig.canvas.draw()
                 
@@ -84,6 +86,8 @@ def plot3d():
             R,T=data
             camera_t_data_gt.append(T)
             camera_t_data_gt=camera_t_data_gt[-1000:]
+            camera_r_data_gt.append(utils.rotationMatrixToEulerAngles(R)*180.0/np.pi)
+            camera_r_data_gt=camera_r_data_gt[-1000:]
 
 
         if cmd=='pts3d':

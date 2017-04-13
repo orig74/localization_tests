@@ -6,6 +6,7 @@ import math
 import time
 import traceback,sys
 import pickle,os
+import utils
 
 from mypnp import myPnP 
 
@@ -116,8 +117,8 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -153,10 +154,10 @@ def main():
         else:
             cap=file_grabber('output.mkv')
     else: #ue4
-        if 1:
+        if 0:
             K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
             base_name='manuever2'
-        if 0:
+        if 1:
             K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
             base_name='manuever3'
         if 0:
@@ -202,7 +203,9 @@ def main():
                 if gt_pos_data['posz']-start_alt > 0.25:
                     alt_tresh=gt_pos_data['posz']-start_alt
                 Tvec_gt=np.array([gt_pos_data['posy'],-gt_pos_data['posx'],gt_pos_data['posz']])
-                R_gt=None #TODO
+                #eu_vec=np.array([gt_pos_data['roll'],gt_pos_data['pitch'],gt_pos_data['yaw']])
+                eu_vec=np.array([gt_pos_data['pitch']-90,gt_pos_data['roll'],gt_pos_data['yaw']])
+                R_gt = utils.eulerAnglesToRotationMatrix(eu_vec/180.0*np.pi) 
                 view3d.send(('camera_gt',(R_gt,Tvec_gt)))
             except EOFError:
                 pass

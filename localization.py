@@ -59,29 +59,6 @@ def draw_ftrs(img):
          a,b = ftr
          cv2.circle(img,(a,b),2,colors[i].tolist(),-1)
 
-def isRotationMatrix(R) :
-    Rt = np.transpose(R)
-    shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(3, dtype = R.dtype)
-    n = np.linalg.norm(I - shouldBeIdentity)
-    return n < 1e-6
-                     
-                     
-def rotationMatrixToEulerAngles(R) :
-    assert(isRotationMatrix(R))
-    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
-    singular = sy < 1e-6
-    if not singular :
-        x = math.atan2(R[2,1] , R[2,2])
-        y = math.atan2(-R[2,0], sy)
-        z = math.atan2(R[1,0], R[0,0])
-    else:
-        x = math.atan2(-R[1,2], R[1,1])
-        y = math.atan2(-R[2,0], sy)
-        z = 0
-    return np.array([x, y, z])
-
-
 
 def recover_pos(clean=True):
     global features_state
@@ -139,8 +116,8 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -262,9 +239,12 @@ def main():
 
 
 if __name__=='__main__':
-    import cProfile
-    cProfile.run('main()','mainstats')
-    import pstats
-    p = pstats.Stats('mainstats')
-    p.strip_dirs().sort_stats('cumulative').print_stats(100)
+    if 0:
+        import cProfile
+        cProfile.run('main()','mainstats')
+        import pstats
+        p = pstats.Stats('mainstats')
+        p.strip_dirs().sort_stats('cumulative').print_stats(100)
+    else:
+        main()
 

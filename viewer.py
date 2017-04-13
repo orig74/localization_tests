@@ -1,11 +1,10 @@
-#vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 import time
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import sys
 import numpy as np
-
-
+import utils
 
 def plot_camera(ax,R,T):
     ret=[]
@@ -21,9 +20,10 @@ def plot_camera(ax,R,T):
 
 def plot3d():
     fig = plt.figure()
-    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(2, 2, 1, projection='3d')
     ax2 = fig.add_subplot(2, 2, 2)
     ax3 = fig.add_subplot(2, 2, 4)
+    ax4 = fig.add_subplot(2, 2, 3)
     fig.canvas.draw()   # note that the first draw comes before setting data 
     #fig.canvas.mpl_connect('close_event', handle_close)
     #h1 = ax1.plot([0,1],[0,1],[0,1], lw=3)[0]
@@ -37,36 +37,48 @@ def plot3d():
     ax3.set_xlim([-2,2])
 
 
-    camera_t_data=[[0,0,0]]    
-    camera_t_data_gt=[]    
+    camera_t_data=[[0,0,0]]
+    camera_r_data=[[0,0,0]]    
+    camera_t_data_gt=[]
+    camera_r_data_gt=[]
     cam_pos_h=None
 
     t_start = time.time()
     i=0
+    cam_cnt=0
     while True:
         cmd,data=yield
         if cmd=='camera':
-            if camera is not None:
-                for h in camera:
-                    h.remove()
             R,T=data
-            camera=plot_camera(ax1,R,-T)
             camera_t_data.append(T)
             camera_t_data=camera_t_data[-1000:]
-            camera_t_vec=np.vstack(camera_t_data)
+            camera_r_data.append(utils.rotationMatrixToEulerAngles(R)*180.0/np.pi)
+            camera_r_data=camera_r_data[-1000:]
+            cam_cnt+=1
+            if cam_cnt%10==0:
+                if camera is not None:
+                    for h in camera:
+                        h.remove()
+                camera=plot_camera(ax1,R,-T)
+                camera_t_vec=np.vstack(camera_t_data)
+                camera_r_vec=np.vstack(camera_r_data)
 
-            if cam_pos_h is not None:
-                for hdl in cam_pos_h:
-                    hdl[0].remove()
-            cam_pos_h = [ ax2.plot(range(len(camera_t_data)),camera_t_vec[:,i],c) for i,c in enumerate('rgb') ]
-            cam_pos_h.append(ax3.plot(camera_t_vec[:,0],camera_t_vec[:,1],'-b')) 
-           
-            if camera_t_data_gt:
-                camera_t_vec_gt=np.vstack(camera_t_data_gt)
-                camera_t_vec_gt-=camera_t_vec_gt[0] #start at (0,0)
-                cam_pos_h.append(ax3.plot(camera_t_vec_gt[:,0],camera_t_vec_gt[:,1],'-r')) 
+                if cam_pos_h is not None:
+                    for hdl in cam_pos_h:
+                        hdl[0].remove()
+                cam_pos_h = [ ax2.plot(range(len(camera_t_data)),camera_t_vec[:,i],c) for i,c in enumerate('rgb') ]
+                cam_pos_h.append(ax3.plot(camera_t_vec[:,0],camera_t_vec[:,1],'-b',alpha=0.5)) 
+                
+                cam_pos_h += [ ax4.plot(range(len(camera_r_data)),camera_r_vec[:,i],c) for i,c in enumerate('rgb') ]
+               
+                if camera_t_data_gt:
+                    camera_t_vec_gt=np.vstack(camera_t_data_gt)
+                    camera_t_vec_gt-=camera_t_vec_gt[0] #start at (0,0)
+                    cam_pos_h.append(ax3.plot(camera_t_vec_gt[:,0],camera_t_vec_gt[:,1],'-r',alpha=0.5)) 
+                    cam_pos_h = [ ax2.plot(range(len(camera_t_data_gt)),camera_t_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
 
-            fig.canvas.draw()
+                fig.canvas.draw()
+                
 
         if cmd=='camera_gt':
             R,T=data

@@ -3,10 +3,11 @@ import pandas as pd
 import numpy as np
 import cv2
 import math
-from scipy.optimize import least_squares
 import time
 import traceback,sys
 import pickle,os
+
+from mypnp import myPnP 
 
 N_FTRS=400
 
@@ -95,13 +96,12 @@ def recover_pos(clean=True):
         features_state=features_state[mask.ravel()==255]
     return ret,R,T
    
-def triangulate(R,T):
+def triangulate(R,T,estimated_alt=1.0):
     global features_state
     p1=get_s()
     p2=get_c()
     
     print('trangulating..')
-    estimated_alt=1.0
     T=T.ravel()
     Trans=np.array([T[0]/T[2], T[1]/T[2], 1.0]) * estimated_alt 
 
@@ -122,61 +122,6 @@ def triangulate(R,T):
 
 Rvec,Tvec=None,None
 
-def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
-    def cost(X):
-        eRvec=X[:3]
-        eTvec=X[3:6]
-        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
-        ppts2d=ppts2d.reshape(-1,2)
-
-        #apply radial distance cost
-        if 1:
-            if 0:
-                rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
-                ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
-            else:
-                #ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis=1))
-                ret=(ppts2d-pts2d).flatten()
-                #import pdb;pdb.set_trace()
-                #ddd
-                #ret=np.mean(np.abs(ppts2d-pts2d),axis=0)#.sum(axis=0)
-        else:
-            ret=np.abs(ppts2d-pts2d)
-            mm=pts2d.mean(axis=0)
-            t1=pts2d[:,0]>mm[0]
-            t2=pts2d[:,1]>mm[1]
-            q1=ret[t1 & t2].sum(axis=0)
-            q2=ret[t1 & ~t2].sum(axis=0)
-            q3=ret[~t1 & t2].sum(axis=0)
-            q4=ret[~t1 & ~t2].sum(axis=0)
-            ret=np.hstack((q1,q2,q3,q4))
-            #import pdb;pdb.set_trace()
-            #dddd
-            
-        return ret.flatten()
-    
-    #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    rl=15.0/180.0*np.pi
-    bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-
-    #bounds=([-np.inf,-np.inf,-np.inf,-3,-3,-3],[np.inf,np.inf,np.inf,3,3,3])
-
-
-    tic=time.time()
-    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),
-    #        '2-point',method='lm',xtol=1e-12,ftol=1e-12)#,bounds=bounds)
-    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-    #            '2-point',bounds=bounds,method='trf', ftol=1e-12)
-    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-                '2-point',method='trf')
-    #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-    #            '2-point',method='dogbox')
-    #import pdb;pdb.set_trace()
-    print('X=',res.message,time.time()-tic)
-    return True,res.x[:3],res.x[3:6]
-   
-
-
 def solve_pos(estimateR):
 
     global Rvec,Tvec
@@ -194,8 +139,8 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            #resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -231,10 +176,18 @@ def main():
         else:
             cap=file_grabber('output.mkv')
     else: #ue4
-        K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+        if 1:
+            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+            base_name='manuever2'
+        if 0:
+            K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
+            base_name='manuever3'
+        if 0:
+            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+            base_name='manuever4'
+
         distortion=np.zeros(5)
         #cap=file_grabber('output_ue4.avi')
-        base_name='manuever2'
         cap=file_grabber(base_name+'.avi')
         if os.path.isfile(base_name+'.pkl'):
             ground_truth=open(base_name+'.pkl','rb')
@@ -269,7 +222,7 @@ def main():
         if ground_truth:
             try:
                 gt_pos_data=pickle.load(ground_truth)
-                if gt_pos_data['posz']-start_alt > 1.5:
+                if gt_pos_data['posz']-start_alt > 0.25:
                     alt_tresh=gt_pos_data['posz']-start_alt
                 Tvec_gt=np.array([gt_pos_data['posy'],-gt_pos_data['posx'],gt_pos_data['posz']])
                 R_gt=None #TODO
@@ -289,7 +242,7 @@ def main():
                 alt_tresh=1.0
             if alt_tresh>0 and not start_recover:
                 ret,R,T=recover_pos()
-                triangulate(R,T)
+                triangulate(R,T,alt_tresh)
                 start_recover=True
             if start_recover:
                 #ret,R,T=recover_pos(clean=False)

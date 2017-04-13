@@ -46,9 +46,10 @@ def reader():
     for _ in range(100):
         yield from asyncio.sleep(1/30.0) #30Hz
     ######### climb
-    ps['posx']=-5.0
+    ps['posx']=-5.0*3
+    ps['posy']=5.0*3
 
-    for _ in range(200):
+    for _ in range(100):
         ps['posz']+=.01
         yield from asyncio.sleep(1/30.0) #30Hz
     for _ in range(100):

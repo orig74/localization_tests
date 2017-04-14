@@ -7,6 +7,13 @@ import time
 import traceback,sys
 import pickle,os
 import utils
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--video",default=1, type=int, help="test video number")
+parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
+parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
+args = parser.parse_args()
+
 
 from mypnp import myPnP 
 
@@ -117,8 +124,10 @@ def solve_pos(estimateR):
         if Rvec is None:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
         else:
-            #resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+            if args.pnp==1:
+                resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            if args.pnp==2:
+                resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -143,26 +152,19 @@ def main():
     global K,distortion
     ground_truth=None
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
-    if 0:
+    if args.dev>=0: #live camera
         K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
                5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
 
         distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
-        if 0:
-            cap=cv2.VideoCapture(1)
-            cap.set(cv2.CAP_PROP_FPS,60)
+        cap=cv2.VideoCapture(args.dev)
+        cap.set(cv2.CAP_PROP_FPS,60)
+    else: #ue4 simulated video
+        if args.video in [1,2,4]:
+            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         else:
-            cap=file_grabber('output.mkv')
-    else: #ue4
-        if 0:
-            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
-            base_name='manuever2'
-        if 1:
             K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
-            base_name='manuever3'
-        if 0:
-            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
-            base_name='manuever4'
+        base_name='manuever{}'.format(args.video)
 
         distortion=np.zeros(5)
         #cap=file_grabber('output_ue4.avi')
@@ -187,8 +189,9 @@ def main():
     cnt=0
     start_recover=False
     alt_tresh=-1
+    last_alt=0
     while 1:
-        k=cv2.waitKey(1)
+        k=cv2.waitKey(0)
         if k!=-1:
             #print('k=',k%256)
             k=k%256
@@ -200,8 +203,10 @@ def main():
         if ground_truth:
             try:
                 gt_pos_data=pickle.load(ground_truth)
-                if gt_pos_data['posz']-start_alt > 0.25:
+                if gt_pos_data['posz']<=last_alt: #not climbing anymore
                     alt_tresh=gt_pos_data['posz']-start_alt
+                last_alt=gt_pos_data['posz']
+
                 Tvec_gt=np.array([gt_pos_data['posy'],-gt_pos_data['posx'],gt_pos_data['posz']])
                 #eu_vec=np.array([gt_pos_data['roll'],gt_pos_data['pitch'],gt_pos_data['yaw']])
                 eu_vec=np.array([gt_pos_data['pitch']-90,gt_pos_data['roll'],gt_pos_data['yaw']])

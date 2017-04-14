@@ -16,8 +16,8 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
                 rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
                 ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
             else:
-                #ret=np.sqrt(((ppts2d-pts2d)**2).sum(axis=1))
-                ret=(ppts2d-pts2d).flatten()
+                ret=np.array([np.sqrt(((ppts2d-pts2d)**2).flatten().sum())])
+                #ret=(ppts2d-pts2d).flatten()
                 #import pdb;pdb.set_trace()
                 #ddd
                 #ret=np.mean(np.abs(ppts2d-pts2d),axis=0)#.sum(axis=0)

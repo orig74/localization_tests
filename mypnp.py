@@ -3,7 +3,7 @@ from scipy.optimize import least_squares
 import numpy as np
 import cv2
 
-def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
+def _myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     def cost(X):
         eRvec=X[:3]
         eTvec=X[3:6]
@@ -55,4 +55,12 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     print('X=',res.message)
     return True,res.x[:3],res.x[3:6]
  
-
+def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
+    def cost(X):
+        eRvec=X[:3]
+        eTvec=X[3:6]
+        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
+        ppts2d=ppts2d.reshape(-1,2)
+        return ((ppts2d-pts2d)).flatten()
+    res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),'3-point',method='trf')
+    return True,res.x[:3],res.x[3:6]

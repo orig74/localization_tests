@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--video",default=1, type=int, help="test video number")
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
+parser.add_argument("--zest", help="use alt estimation",action="store_true")
 args = parser.parse_args()
 
 
@@ -107,8 +108,7 @@ def triangulate(R,T,estimated_alt=1.0):
 
 Rvec,Tvec=None,None
 
-def solve_pos(estimateR):
-
+def solve_pos(estimate):
     global Rvec,Tvec
     try:
         p2=get_c()
@@ -127,7 +127,7 @@ def solve_pos(estimateR):
             if args.pnp==1:
                 resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
             if args.pnp==2:
-                resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec)
+                resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -231,7 +231,10 @@ def main():
                 start_recover=True
             if start_recover:
                 #ret,R,T=recover_pos(clean=False)
-                resPnP,Rvec,Tvec=solve_pos(None)
+                if ground_truth and args.zest:
+                    resPnP,Rvec,Tvec=solve_pos({'alt':Tvec_gt[2]})
+                else:
+                    resPnP,Rvec,Tvec=solve_pos(None)
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
                     view3d.send(('camera',(R,Tvec.ravel())))

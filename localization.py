@@ -13,6 +13,7 @@ parser.add_argument("--video",default=1, type=int, help="test video number")
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
+parser.add_argument("--rest", help="use rotation estimation",action="store_true")
 args = parser.parse_args()
 
 
@@ -231,10 +232,14 @@ def main():
                 start_recover=True
             if start_recover:
                 #ret,R,T=recover_pos(clean=False)
+                est_dict={}
                 if ground_truth and args.zest:
-                    resPnP,Rvec,Tvec=solve_pos({'alt':Tvec_gt[2]})
-                else:
-                    resPnP,Rvec,Tvec=solve_pos(None)
+                    est_dict['alt']=Tvec_gt[2]-start_alt
+                if ground_truth and args.rest:
+                    R_vec_gt,_=cv2.Rodrigues(R_gt)
+                    est_dict['rvec']=R_vec_gt.flatten()
+
+                resPnP,Rvec,Tvec=solve_pos(est_dict)
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
                     view3d.send(('camera',(R,Tvec.ravel())))

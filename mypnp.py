@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 
 def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
-    def costf(X):
+    def cost(X):
         eRvec=X[:3]
         eTvec=X[3:6]
         ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
@@ -12,24 +12,14 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
         ret=(ppts2d-pts2d).flatten()
         return ret.flatten()
   
-    def costf_alt_est(X):
-        eRvec=X[:3]
-        eTvec=np.zeros(3)
-        eTvec[:2]=X[3:5]
-        eTvec[2]=estimation['alt']
-        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
-        ppts2d=ppts2d.reshape(-1,2)
-        ret=(ppts2d-pts2d).flatten()
-        return ret.flatten()
- 
             
     #### define defferent bounds
  
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
-    rl=15.0/180.0*np.pi
-    bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-
-    #bounds=([-np.inf,-np.inf,-np.inf,-3,-3,-3],[np.inf,np.inf,np.inf,3,3,3])
+    #rl=15.0/180.0*np.pi
+    #bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
+    eps=1e-3
+    bounds=([-np.inf]*6,[np.inf]*6)
 
     ### different methods for least sq.
 
@@ -37,15 +27,19 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     #        '3-point',method='lm',xtol=1e-12,ftol=1e-12)#,bounds=bounds)
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',bounds=bounds,method='trf', ftol=1e-12)
+    X0=np.hstack((Rvec.flatten(),Tvec.flatten()))
+    
     if estimation is not None:
         if 'alt' in estimation:
-            X0=np.hstack((Rvec.flatten(),Tvec.flatten()[:2]))
-            cost=costf_alt_est
-    else:
-            X0=np.hstack((Rvec.flatten(),Tvec.flatten()))
-            cost=costf
+            X0[5]=estimation['alt']
+            bounds[0][5]=estimation['alt']-eps
+            bounds[1][5]=estimation['alt']+eps
+        if 'rvec' in estimation:
+            X0[:3]=estimation['rvec']
+            bounds[0][:3]=estimation['rvec']-eps
+            bounds[1][:3]=estimation['rvec']+eps
 
-    res=least_squares(cost,X0,'3-point',method='trf')
+    res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
     print('X=',res.message)

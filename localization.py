@@ -191,7 +191,7 @@ def main():
     alt_tresh=-1
     last_alt=0
     while 1:
-        k=cv2.waitKey(0)
+        k=cv2.waitKey(1)
         if k!=-1:
             #print('k=',k%256)
             k=k%256

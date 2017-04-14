@@ -14,6 +14,7 @@ parser.add_argument("--dev",default=-1, type=int, help="web camera device number
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
+parser.add_argument("--wait", help="wait for space",action="store_true")
 args = parser.parse_args()
 
 
@@ -192,7 +193,7 @@ def main():
     alt_tresh=-1
     last_alt=0
     while 1:
-        k=cv2.waitKey(1)
+        k=cv2.waitKey(0 if args.wait else 1)
         if k!=-1:
             #print('k=',k%256)
             k=k%256
@@ -212,7 +213,8 @@ def main():
                 #eu_vec=np.array([gt_pos_data['roll'],gt_pos_data['pitch'],gt_pos_data['yaw']])
                 eu_vec=np.array([gt_pos_data['pitch']-90,gt_pos_data['roll'],gt_pos_data['yaw']])
                 R_gt = utils.eulerAnglesToRotationMatrix(eu_vec/180.0*np.pi) 
-                view3d.send(('camera_gt',(R_gt,Tvec_gt)))
+                
+                view3d.send(('camera_gt',(time.time(),R_gt,Tvec_gt)))
             except EOFError:
                 pass
             #print('gt=',gt_pos_data)
@@ -242,9 +244,11 @@ def main():
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
-                    view3d.send(('camera',(R,Tvec.ravel())))
+                    view3d.send(('camera',(time.time(),R,Tvec.ravel())))
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
+                else:
+                    print('Error failed pnp')
 
         #else:
         #    print('Error no image')

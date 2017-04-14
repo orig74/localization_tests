@@ -37,23 +37,29 @@ def plot3d():
     ax3.set_xlim([-2,2])
 
 
-    camera_t_data=[[0,0,0]]
-    camera_r_data=[[0,0,0]]    
+    t_start = time.time()
+    camera_t_data=[]
+    camera_r_data=[]    
     camera_t_data_gt=[]
     camera_r_data_gt=[]
+    camera_ttags=[]
+    camera_gt_ttags=[]
+
     cam_pos_h=None
 
-    t_start = time.time()
     i=0
     cam_cnt=0
+    mem_len=1000
     while True:
         cmd,data=yield
         if cmd=='camera':
-            R,T=data
+            ttag,R,T=data
             camera_t_data.append(T)
-            camera_t_data=camera_t_data[-1000:]
+            camera_t_data=camera_t_data[-mem_len:]
             camera_r_data.append(utils.rotationMatrixToEulerAngles(R)*180.0/np.pi)
-            camera_r_data=camera_r_data[-1000:]
+            camera_r_data=camera_r_data[-mem_len:]
+            camera_ttags.append(ttag-t_start)
+            camera_ttags=camera_ttags[-mem_len:]
             cam_cnt+=1
             if cam_cnt%10==0:
                 if camera is not None:
@@ -66,28 +72,30 @@ def plot3d():
                 if cam_pos_h is not None:
                     for hdl in cam_pos_h:
                         hdl[0].remove()
-                cam_pos_h = [ ax2.plot(range(len(camera_t_data)),camera_t_vec[:,i],c) for i,c in enumerate('rgb') ]
+                cam_pos_h = [ ax2.plot(camera_ttags,camera_t_vec[:,i],c) for i,c in enumerate('rgb') ]
                 cam_pos_h.append(ax3.plot(camera_t_vec[:,0],camera_t_vec[:,1],'-b',alpha=0.5)) 
                 
-                cam_pos_h += [ ax4.plot(range(len(camera_r_data)),camera_r_vec[:,i],c) for i,c in enumerate('rgb') ]
+                cam_pos_h += [ ax4.plot(camera_ttags,camera_r_vec[:,i],c) for i,c in enumerate('rgb') ]
                
                 if camera_t_data_gt:
                     camera_t_vec_gt=np.vstack(camera_t_data_gt)
                     camera_r_vec_gt=np.vstack(camera_r_data_gt)
                     camera_t_vec_gt-=camera_t_vec_gt[0] #start at (0,0)
                     cam_pos_h.append(ax3.plot(camera_t_vec_gt[:,0],camera_t_vec_gt[:,1],'-r',alpha=0.5)) 
-                    cam_pos_h += [ ax2.plot(range(len(camera_t_data_gt)),camera_t_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
-                    cam_pos_h += [ ax4.plot(range(len(camera_r_data_gt)),camera_r_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
+                    cam_pos_h += [ ax2.plot(camera_gt_ttags,camera_t_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
+                    cam_pos_h += [ ax4.plot(camera_gt_ttags,camera_r_vec_gt[:,i],c,alpha=0.5) for i,c in enumerate('rgb') ]
 
                 fig.canvas.draw()
                 
 
         if cmd=='camera_gt':
-            R,T=data
+            ttag,R,T=data
             camera_t_data_gt.append(T)
-            camera_t_data_gt=camera_t_data_gt[-1000:]
+            camera_t_data_gt=camera_t_data_gt[-mem_len:]
             camera_r_data_gt.append(utils.rotationMatrixToEulerAngles(R)*180.0/np.pi)
-            camera_r_data_gt=camera_r_data_gt[-1000:]
+            camera_r_data_gt=camera_r_data_gt[-mem_len:]
+            camera_gt_ttags.append(ttag-t_start)
+            camera_gt_ttags=camera_gt_ttags[-mem_len:]
 
 
         if cmd=='pts3d':

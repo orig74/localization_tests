@@ -3,7 +3,7 @@ from scipy.optimize import least_squares
 import numpy as np
 import cv2
 
-def _myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
+def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     def cost(X):
         eRvec=X[:3]
         eTvec=X[3:6]
@@ -16,8 +16,8 @@ def _myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
                 rcost=np.sqrt(((ppts2d-ppts2d.mean(axis=0))**2).sum(axis=1))
                 ret=(ppts2d-pts2d)*rcost.reshape(-1,1)
             else:
-                ret=np.array([np.sqrt(((ppts2d-pts2d)**2).flatten().sum())])
-                #ret=(ppts2d-pts2d).flatten()
+                #ret=np.array([np.sqrt(((ppts2d-pts2d)**2).flatten().sum())])
+                ret=(ppts2d-pts2d).flatten()
                 #import pdb;pdb.set_trace()
                 #ddd
                 #ret=np.mean(np.abs(ppts2d-pts2d),axis=0)#.sum(axis=0)
@@ -48,14 +48,14 @@ def _myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',bounds=bounds,method='trf', ftol=1e-12)
     res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
-                '2-point',method='trf')
+                '3-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
     #import pdb;pdb.set_trace()
     print('X=',res.message)
     return True,res.x[:3],res.x[3:6]
  
-def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
+def _myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec):
     def cost(X):
         eRvec=X[:3]
         eTvec=X[3:6]

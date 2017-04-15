@@ -40,6 +40,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
             bounds[1][:3]=estimation['rvec']+eps
 
     res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')
+    #res=least_squares(cost,X0,'3-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
     print('X=',res.message)

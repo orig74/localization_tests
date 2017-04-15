@@ -44,6 +44,7 @@ def eulerAnglesToRotationMatrix(theta) :
                     ])
                      
                      
+    #R = np.dot(R_z, np.dot( np.linalg.inv(R_y), R_x) )
     R = np.dot(R_z, np.dot( R_y, R_x ))
  
     return R

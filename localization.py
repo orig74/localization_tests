@@ -103,7 +103,17 @@ def triangulate(R,T,estimated_alt=1.0):
     pts=pts.T
     pts=(pts.T/pts[:,3]).T
     pts3d=pts[:,:3]
-    #import pdb;pdb.set_trace()
+
+    ###sanity check
+    if 0:
+        R_vec,_=cv2.Rodrigues(R)
+        ppts2d,jac=cv2.projectPoints(pts3d,R_vec,Trans,K,distortion)
+        ppts2d=ppts2d.reshape(-1,2)
+        ret=(ppts2d-get_c()).flatten()
+        import pdb;pdb.set_trace()
+
+    ###
+
     features_state.loc[:,'ex':'ez']=pts3d.reshape(-1,3)
  
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
@@ -185,9 +195,6 @@ def main():
     view3d=viewer.plot3d()
     view3d.__next__()  
 
-
-
-
     cnt=0
     start_recover=False
     alt_tresh=-1
@@ -201,6 +208,8 @@ def main():
             #if start_recover:
             #    view3d.send(('stop',None))
             break
+        if k==ord('b'):
+            import pdb;pdb.set_trace()
         ret,img=cap.read()
         if ground_truth:
             try:
@@ -240,8 +249,10 @@ def main():
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
-
+                
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
+                #import pdb;pdb.set_trace()
+                #ffff
                 if resPnP:
                     R,_=cv2.Rodrigues(Rvec)
                     view3d.send(('camera',(time.time(),R,Tvec.ravel())))

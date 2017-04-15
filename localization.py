@@ -8,6 +8,8 @@ import traceback,sys
 import pickle,os
 import utils
 import argparse
+import camerasim
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--video",default=1, type=int, help="test video number")
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
@@ -15,6 +17,7 @@ parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-open
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
 parser.add_argument("--wait", help="wait for space",action="store_true")
+parser.add_argument("--sim", help="use camera simulation",action="store_true")
 args = parser.parse_args()
 
 
@@ -171,7 +174,12 @@ def main():
         distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
         cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FPS,60)
-    else: #ue4 simulated video
+    elif args.sim: 
+        K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+        cap=camerasim.Capture(K.flatten(),(240,320))
+        distortion=np.zeros(5)
+    else:
+        #ue4 simulated video
         if args.video in [1,2,4]:
             K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         else:

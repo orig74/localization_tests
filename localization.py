@@ -186,6 +186,8 @@ def main():
 
         ground_truth=_ground_truth()
         distortion=np.zeros(5)
+        cap.read()
+        start_alt=ground_truth.__next__()['posz']
     else:
         #ue4 simulated video
         if args.video in [1,2,4]:

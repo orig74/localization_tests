@@ -31,10 +31,11 @@ class Capture(object):
         self.size=size
         self.manuever=manuver1()
         self.last_points=None
-
+        self.last_position=None
 
     def read(self):
-        x,y,z,rx,ry,rz=self.manuever.__next__()
+        self.last_position=self.manuever.__next__()
+        x,y,z,rx,ry,rz=self.last_position
         img=np.zeros((self.size[0],self.size[1],3),dtype='uint8')
         C=np.array([x,y,z])
         #0=RC+T T=-R.T*C

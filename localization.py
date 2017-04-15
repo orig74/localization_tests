@@ -177,6 +177,14 @@ def main():
     elif args.sim: 
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         cap=camerasim.Capture(K.flatten(),(240,320))
+        def _ground_truth():
+            while 1:
+                data=cap.last_position
+                r={}
+                r['posx'],r['posy'],r['posz'],r['roll'],r['pitch'],r['yaw']=data 
+                yield r
+
+        ground_truth=_ground_truth()
         distortion=np.zeros(5)
     else:
         #ue4 simulated video
@@ -190,12 +198,23 @@ def main():
         #cap=file_grabber('output_ue4.avi')
         cap=file_grabber(base_name+'.avi')
         if os.path.isfile(base_name+'.pkl'):
-            ground_truth=open(base_name+'.pkl','rb')
+            def _ground_truth():
+                fd=open(base_name+'.pkl','rb')
+                data=None
+                while 1:
+                    try:
+                        data= pickle.load(fd)
+                    except StopIteration:
+                        pass
+                    yield data
+
+            ground_truth=_ground_truth()
+                
         #skip a few frames 
         for _ in range(50):
             cap.read()
             if ground_truth:
-                gt_pos_data=pickle.load(ground_truth)
+                gt_pos_data=ground_truth.__next__()
                 if gt_pos_data:
                     start_alt=gt_pos_data['posz']
 
@@ -221,7 +240,7 @@ def main():
         ret,img=cap.read()
         if ground_truth:
             try:
-                gt_pos_data=pickle.load(ground_truth)
+                gt_pos_data=ground_truth.__next__()
                 if gt_pos_data['posz']<=last_alt: #not climbing anymore
                     alt_tresh=gt_pos_data['posz']-start_alt
                 last_alt=gt_pos_data['posz']

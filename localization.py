@@ -66,6 +66,18 @@ def calc_of(img):
     features_state=features_state[st.flatten()==1]
     prev_frame=gray
 
+def init_of_sim(img,cap):
+    global features_state
+    features_state=pd.DataFrame(index=range(cap.last_points.shape[0]),columns=ftr_columns)
+    features_state.loc[:,'sx':'sy']=cap.last_points
+    features_state.loc[:,'cx':'cy']=cap.last_points
+
+def calc_of_sim(img,cap):
+    global features_state
+    features_state.loc[:,'cx':'cy']=cap.last_points
+
+
+
 def draw_ftrs(img):
     ftr_pos=np.array(features_state.loc[:,'cx':'cy'],dtype='float32').reshape(-1,2)
     indices=features_state.index.tolist()
@@ -258,9 +270,15 @@ def main():
             #print('gt=',gt_pos_data)
         if ret:
             if cnt==0:
-                init_of(img)
+                if args.sim:
+                    init_of_sim(img,cap)
+                else:
+                    init_of(img)
             else:
-                calc_of(img)
+                if args.sim:
+                    calc_of_sim(img,cap)
+                else:
+                    calc_of(img)
             cnt+=1
             draw_ftrs(img)
             cv2.imshow('img',img)

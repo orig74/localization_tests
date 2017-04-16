@@ -56,8 +56,6 @@ def manuver2():
                 roll_sign=1 if (ind%rot_roll)<(rot_roll//2) else -1
                 vec[4]+=roll_sign*0.1/180.0*np.pi
             yield vec
-    while 1:
-            yield vec
 
 
 
@@ -71,7 +69,10 @@ class Capture(object):
         self.last_position=None
 
     def read(self):
-        self.last_position=self.manuever.__next__()
+        try:
+            self.last_position=self.manuever.__next__()
+        except StopIteration:
+            return False,None
         x,y,z,rx,ry,rz=self.last_position
         img=np.zeros((self.size[0],self.size[1],3),dtype='uint8')
         C=np.array([x,y,z])
@@ -83,9 +84,7 @@ class Capture(object):
         pts/=pts[:,2]
         for ptm in pts:
             pt=list(map(int,ptm.A1)) 
-            #print(pt)
             cv2.rectangle(img,(pt[0]-1,pt[1]-1),(pt[0]+1,pt[1]+1),(0,255,0),1)
-        #print(pts)
         self.last_points=pts[:,:2]
         return True,img
 

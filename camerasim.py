@@ -23,13 +23,50 @@ def manuver1():
         vec[3]+=1.0/180*np.pi
         yield vec
 
+def manuver2():
+    #x,y,z,rx,ry,rz
+    vec=np.zeros(6)
+    vec[2]=3
+    #vec[3]=-90/180.0*np.pi
+    for _ in range(50):
+        vec[2]+=0.1
+        yield vec
+
+    for rot_pitch,rot_roll in [(0,0),(200,20)]: 
+        for ind in range(400):
+            if ind==0: 
+                step_x=-0.01
+                step_y=0
+            if ind==100:
+                step_x=0
+                step_y=0.01
+            if ind==200:
+                step_x=0.01
+                step_y=0
+            if ind==300:
+                step_x=0
+                step_y=-0.01
+            vec[0]+=step_x
+            vec[1]+=step_y
+            
+            if rot_pitch>0:
+                pitch_sign=1 if (ind%rot_pitch)<(rot_pitch//2) else -1
+                vec[3]+=pitch_sign*0.1/180.0*np.pi
+            if rot_roll>0:
+                roll_sign=1 if (ind%rot_roll)<(rot_roll//2) else -1
+                vec[4]+=roll_sign*0.1/180.0*np.pi
+            yield vec
+    while 1:
+            yield vec
+
+
 
 
 class Capture(object):
     def __init__(self,camera_matrix,size,noise_model=None):
         self.K=mat(camera_matrix).reshape(3,3)
         self.size=size
-        self.manuever=manuver1()
+        self.manuever=manuver2()
         self.last_points=None
         self.last_position=None
 

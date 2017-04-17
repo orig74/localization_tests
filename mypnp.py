@@ -30,7 +30,8 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
     #rl=15.0/180.0*np.pi
     #bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-    eps=1e-3
+    reps=np.radians(np.array([0.2,0.2,0.3]))
+    zeps=0.1
     bounds=([-np.inf]*6,[np.inf]*6)
 
     ### different methods for least sq.
@@ -44,12 +45,12 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     if estimation is not None:
         if 'alt' in estimation:
             X0[5]=estimation['alt']
-            bounds[0][5]=estimation['alt']-eps
-            bounds[1][5]=estimation['alt']+eps
+            bounds[0][5]=estimation['alt']-zeps
+            bounds[1][5]=estimation['alt']+zeps
         if 'rvec' in estimation:
             X0[:3]=estimation['rvec']
-            bounds[0][:3]=estimation['rvec']-eps
-            bounds[1][:3]=estimation['rvec']+eps
+            bounds[0][:3]=estimation['rvec']-reps
+            bounds[1][:3]=estimation['rvec']+reps
 
     res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')
     #res=least_squares(cost,X0,'3-point',method='trf')

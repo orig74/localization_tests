@@ -196,13 +196,16 @@ def main():
         cap=camerasim.Capture(K.flatten(),(240,320))
         def _ground_truth():
             while 1:
-                data=cap.last_position
-                r={}
-                r['posx'],r['posy'],r['posz']=data[:3]
-                r['roll'],r['pitch'],r['yaw']=data[3:]/np.pi*180
-                #r['roll']=r['roll']
-                #r['pitch']=-r['pitch']
-                yield r
+                try:
+                    data=cap.last_position
+                    r={}
+                    r['posx'],r['posy'],r['posz']=data[:3]
+                    r['roll'],r['pitch'],r['yaw']=data[3:]/np.pi*180
+                    #r['roll']=r['roll']
+                    #r['pitch']=-r['pitch']
+                    yield r
+                except StopIteration:
+                    pass
 
         ground_truth=_ground_truth()
         distortion=np.zeros(5)
@@ -226,9 +229,10 @@ def main():
                 while 1:
                     try:
                         data= pickle.load(fd)
-                        if data:
-                            
+                        if data: 
                             data['posx'],data['posy']=data['posy'],-data['posx']
+                            data['pitch'],data['roll']=data['roll'],data['pitch']-90
+                            data['yaw'],data['pitch']=data['pitch'],data['yaw']
                     except StopIteration:
                         pass
                     yield data
@@ -277,6 +281,8 @@ def main():
                 
                 view3d.send(('camera_gt',(time.time(),R_gt,Tvec_gt)))
             except EOFError:
+                pass
+            except StopIteration:
                 pass
             #print('gt=',gt_pos_data)
         if ret:

@@ -102,7 +102,7 @@ class Capture(object):
     def __init__(self,camera_matrix,size,noise_model=None):
         self.K=mat(camera_matrix).reshape(3,3)
         self.size=size
-        self.manuever=manuver3()
+        self.manuever=manuver2()
         self.last_points=None
         self.last_position=None
 

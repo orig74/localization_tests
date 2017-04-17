@@ -1,6 +1,7 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 import pandas as pd
 import numpy as np
+from numpy import matrix as mat
 import cv2
 import math
 import time
@@ -106,19 +107,22 @@ def triangulate(R,T,estimated_alt=1.0):
     
     print('trangulating..')
     T=T.ravel()
-    Trans=np.array([T[0]/T[2], T[1]/T[2], 1.0]) * estimated_alt 
+
+    trans_T=(-mat(R).T*mat(T).T).A1
+    trans=np.array([trans_T[0]/trans_T[2], trans_T[1]/trans_T[2], 1.0]) * estimated_alt 
+    trans=(mat(R)*mat(trans).T).A1
 
     
     p1=cv2.undistortPoints(p1.reshape(-1,1,2),K,distortion).reshape(-1,2)
     p2=cv2.undistortPoints(p2.reshape(-1,1,2),K,distortion).reshape(-1,2)
 
     Proj1=np.hstack((np.eye(3),np.zeros((3,1))))
-    Proj2=np.hstack((R,Trans.reshape(3,1)))
-    pts=cv2.triangulatePoints(Proj1,Proj2,p1.T,p2.T)
-    pts=pts.T
-    pts=(pts.T/pts[:,3]).T
-    pts3d=pts[:,:3]
+    Proj2=np.hstack((R,-trans.reshape((3,1))))
 
+    pts3d_trang=cv2.triangulatePoints(Proj2,Proj1,p2.T,p1.T)
+    pts3d_trang=pts3d_trang/pts3d_trang[3,:]
+    pts3d_trang=pts3d_trang.T[:,:3]
+    #import pdb;pdb.set_trace()
     ###sanity check
     if 0:
         R_vec,_=cv2.Rodrigues(R)
@@ -129,7 +133,7 @@ def triangulate(R,T,estimated_alt=1.0):
 
     ###
 
-    features_state.loc[:,'ex':'ez']=pts3d.reshape(-1,3)
+    features_state.loc[:,'ex':'ez']=pts3d_trang.reshape(-1,3)
  
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
@@ -149,12 +153,13 @@ def solve_pos(estimate):
 
         pts3d=get_e()
         if Rvec is None:
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion)
-        else:
-            if args.pnp==1:
-                resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            if args.pnp==2:
-                resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate)
+            Rvec=np.array([[   0.0],[   0.0],[   0.0]])
+            Tvec=-np.array([[   0.0],[   0.0],[   7.0]]) # strting at positive alt Tvec=-Camera_pos
+
+        if args.pnp==1:
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+        if args.pnp==2:
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 
@@ -301,8 +306,9 @@ def main():
                 #import pdb;pdb.set_trace()
                 #ffff
                 if resPnP:
-                    R,_=cv2.Rodrigues(Rvec)
-                    view3d.send(('camera',(time.time(),R,Tvec.ravel())))
+                    Rest,_=cv2.Rodrigues(Rvec)
+                    cam_pos=-mat(Rest).T*mat(Tvec).T
+                    view3d.send(('camera',(time.time(),Rest,cam_pos.A1)))
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
                 else:

@@ -1,13 +1,25 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 from scipy.optimize import least_squares
 import numpy as np
+from numpy import matrix as mat
 import cv2
 
 def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
+
+    alt_est_mod='alt' in estimation
     def cost(X):
         eRvec=X[:3]
-        eTvec=X[3:6]
-        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,eTvec,K,distortion)
+
+        #estimating camera position and not T vec for creating alt bounds 
+        if alt_est_mod:
+            camera_pos=X[3:6]
+            Rest,_=cv2.Rodrigues(eRvec)
+            #solving 0=RC+T => T=-RC
+            estimate_Tvec=(-mat(Rest)*mat(camera_pos).T).A1
+        else:
+            estimate_Tvec=X[3:6]
+        
+        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-pts2d).flatten()
         return ret.flatten()
@@ -43,6 +55,14 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     #res=least_squares(cost,X0,'3-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
+
+    #retuning Tvec
+    if alt_est_mod:
+        #solving 0=RC+T => T=-RC
+        Rest,_=cv2.Rodrigues(res.x[:3])
+        estimate_Tvec=(-mat(Rest)*mat(res.x[3:6]).T).A1
+    else:
+        estimate_Tvec=res.x[3:6]
     print('X=',res.message)
-    return True,res.x[:3],res.x[3:6]
+    return True,res.x[:3],estimate_Tvec
  

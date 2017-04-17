@@ -300,7 +300,7 @@ def main():
                 #ret,R,T=recover_pos(clean=False)
                 est_dict={}
                 if ground_truth and args.zest:
-                    est_dict['alt']=Tvec_gt[2]-start_alt
+                    est_dict['alt']=(Tvec_gt[2]-start_alt)
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()

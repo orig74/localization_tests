@@ -22,6 +22,7 @@ def rotationMatrixToEulerAngles(R) :
         y = math.atan2(-R[2,0], sy)
         z = 0
     return np.array([x, y, z])
+    #return np.array([y, x, z])
 
 
 def eulerAnglesToRotationMatrix(theta) :
@@ -44,8 +45,8 @@ def eulerAnglesToRotationMatrix(theta) :
                     ])
                      
                      
-    #R = np.dot(R_z, np.dot( np.linalg.inv(R_y), R_x) )
     R = np.dot(R_z, np.dot( R_y, R_x ))
+    #R = np.dot(R_z, np.dot( R_x, R_y ))
  
     return R
 

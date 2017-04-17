@@ -198,7 +198,10 @@ def main():
             while 1:
                 data=cap.last_position
                 r={}
-                r['posx'],r['posy'],r['posz'],r['roll'],r['pitch'],r['yaw']=data 
+                r['posx'],r['posy'],r['posz']=data[:3]
+                r['roll'],r['pitch'],r['yaw']=data[3:]/np.pi*180
+                #r['roll']=r['roll']
+                #r['pitch']=-r['pitch']
                 yield r
 
         ground_truth=_ground_truth()

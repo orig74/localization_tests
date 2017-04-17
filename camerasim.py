@@ -113,18 +113,19 @@ class Capture(object):
             return False,None
         x,y,z,rx,ry,rz=self.last_position
         img=np.zeros((self.size[0],self.size[1],3),dtype='uint8')
-        C=-np.array([x,y,z])
+        C=np.array([x,y,z])
         #0=RC+T T=-R.T*C
         
         R=utils.eulerAnglesToRotationMatrix([rx,ry,rz]) 
         
+        T=-mat(R)*mat(C).T
         if 0:
-            T=-mat(R).T*mat(C).T
-            pts=(self.K*((mat(R).T*generate_3d_points().T).T+T.T).T).T
+            pts=(self.K*((mat(R)*generate_3d_points().T).T+T.T).T).T
             pts/=pts[:,2]
+            pts=pts[:,:2].T
         else:
             R_vec,_=cv2.Rodrigues(R)
-            pts,jac=cv2.projectPoints(generate_3d_points(),R_vec,-C,self.K,np.zeros(5))
+            pts,jac=cv2.projectPoints(generate_3d_points(),R_vec,T.A1,self.K,np.zeros(5))
             pts=pts.reshape(-1,2)
  
         for ptm in pts:

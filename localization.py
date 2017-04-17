@@ -226,6 +226,9 @@ def main():
                 while 1:
                     try:
                         data= pickle.load(fd)
+                        if data:
+                            
+                            data['posx'],data['posy']=data['posy'],-data['posx']
                     except StopIteration:
                         pass
                     yield data

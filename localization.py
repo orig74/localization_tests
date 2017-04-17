@@ -268,8 +268,8 @@ def main():
                 last_alt=gt_pos_data['posz']
 
                 Tvec_gt=np.array([gt_pos_data['posx'],gt_pos_data['posy'],gt_pos_data['posz']])
-                #eu_vec=np.array([gt_pos_data['roll'],gt_pos_data['pitch'],gt_pos_data['yaw']])
-                eu_vec=np.array([gt_pos_data['pitch'],gt_pos_data['roll'],gt_pos_data['yaw']])
+                eu_vec=np.array([gt_pos_data['roll'],gt_pos_data['pitch'],gt_pos_data['yaw']])
+                #eu_vec=np.array([gt_pos_data['pitch'],gt_pos_data['roll'],gt_pos_data['yaw']])
                 R_gt = utils.eulerAnglesToRotationMatrix(eu_vec/180.0*np.pi) 
                 
                 view3d.send(('camera_gt',(time.time(),R_gt,Tvec_gt)))

@@ -6,24 +6,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 lmap = lambda func, *iterable: list(map(func, *iterable))
 
-def old_reader():
-    ser = serial.Serial('/dev/ttyACM0',115200)
-    while 1:
-        ret={}
-        line=ser.readline().split()
-        if(len(line)<15):
-            yield None
-            continue
-        ## axel/gyro
-        try:
-            ret['a/g']=np.array(lmap(float,line[1:7]))
-            ret['mag']=np.array(lmap(float,line[8:11]))
-            ret['heading']=float(line[12])
-            ret['alt']=float(line[14])
-            yield ret
-        except ValueError:
-            print('faild to parse data')
-
 def reader():
     ser = serial.Serial('/dev/ttyACM0',115200)
     while 1:

@@ -19,11 +19,15 @@ def plot_camera(ax,R,T):
     return ret
 
 def plot3d():
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,6))
     ax1 = fig.add_subplot(2, 2, 1, projection='3d')
+    ax1.set_title('3D')
     ax2 = fig.add_subplot(2, 2, 2)
+    ax2.set_title('XYZ')
     ax3 = fig.add_subplot(2, 2, 4)
+    ax3.set_title('2D XY plot')
     ax4 = fig.add_subplot(2, 2, 3)
+    ax4.set_title('Angles')
     fig.canvas.draw()   # note that the first draw comes before setting data 
     #fig.canvas.mpl_connect('close_event', handle_close)
     #h1 = ax1.plot([0,1],[0,1],[0,1], lw=3)[0]

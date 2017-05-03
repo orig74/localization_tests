@@ -64,6 +64,6 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
         estimate_Tvec=(-mat(Rest)*mat(res.x[3:6]).T).A1
     else:
         estimate_Tvec=res.x[3:6]
-    print('X=',res.message)
+    #print('X=',res.message)
     return True,res.x[:3],estimate_Tvec
  

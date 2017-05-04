@@ -2,6 +2,7 @@
 import serial,time,struct,math
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 from mpl_toolkits.mplot3d import Axes3D
 
 lmap = lambda func, *iterable: list(map(func, *iterable))
@@ -9,6 +10,8 @@ lmap = lambda func, *iterable: list(map(func, *iterable))
 def reader():
     ser = serial.Serial('/dev/ttyACM0',115200)
     while 1:
+        while ser.inWaiting()<2:
+            yield None
         while 1:
             if ser.read()==b'\xa5':
                 if ser.read()==b'\xa5':
@@ -31,6 +34,17 @@ def reader():
         ret['t_stemp_ms']=data[10]
         yield ret
         
+def file_reader(fname):
+    import pickle
+    fd = open(fname,'rb')
+    try:
+        while 1:
+            yield pickle.load(fd)
+    except EOFError:
+        while 1:
+            yield None
+            tim.sleep(0.01)
+
 
 def ploter():
     fig = plt.figure(figsize=(8,6))
@@ -91,9 +105,11 @@ def ploter():
         plt.waitforbuttonpress(timeout=0.001)
                 
 
+prefix='data/manuvers_raw/mov%s.'%sys.argv[1]
 
-if __name__=="__main__":
-    rd=reader()
+if 0 and  __name__=="__main__":
+    #rd=reader()
+    rd=file_reader(prefix+'pkl')
     plot=ploter()
     plot.__next__()
     while 1:
@@ -102,5 +118,35 @@ if __name__=="__main__":
         if data is not None:
             plot.send(data)
         else:
-            print('Error data is None')
+            #print('Error data is None')
             time.sleep(0.01)
+
+
+if 1 and  __name__=="__main__":
+    import subprocess
+    import cv2
+    import pickle
+    pklfd=open(prefix+'pkl','wb')
+    cap=cv2.VideoCapture(1)
+    rd=reader()
+    #plot=ploter()
+    #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
+    cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 640x480 -r 30 -i - -an -vcodec libx264 {}'\
+            .format(prefix+'avi')
+    pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
+    #plot.__next__()
+    while 1:
+        data=rd.__next__()
+        #print(data)
+        if data is not None:
+            pickle.dump(data,pklfd,-1)
+        if cap.grab():
+            _,im=cap.retrieve()
+            pr.stdin.write(im.tostring())
+            cv2.imshow('cv', im)
+            k=cv2.waitKey(1)
+            if (k%256)==27:
+                break
+
+   
+

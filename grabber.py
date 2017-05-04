@@ -32,6 +32,6 @@ if __name__=='__main__':
         _,im=cap.read()
         cv2.imshow('im',im)
         k=cv2.waitKey(0)
-        if k==27:
+        if (k%256)==27:
             break
         

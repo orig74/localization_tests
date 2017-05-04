@@ -108,6 +108,21 @@ def ploter():
 prefix='data/manuvers_raw/mov%s.'%sys.argv[1]
 
 if 0 and  __name__=="__main__":
+    rd=reader()
+    #rd=file_reader(prefix+'pkl')
+    plot=ploter()
+    plot.__next__()
+    while 1:
+        data=rd.__next__()
+        #print(data)
+        if data is not None:
+            plot.send(data)
+        else:
+            #print('Error data is None')
+            time.sleep(0.01)
+
+
+if 1 and  __name__=="__main__":
     #rd=reader()
     rd=file_reader(prefix+'pkl')
     plot=ploter()
@@ -122,7 +137,8 @@ if 0 and  __name__=="__main__":
             time.sleep(0.01)
 
 
-if 1 and  __name__=="__main__":
+
+if 0 and  __name__=="__main__":
     import subprocess
     import cv2
     import pickle
@@ -135,13 +151,16 @@ if 1 and  __name__=="__main__":
             .format(prefix+'avi')
     pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
     #plot.__next__()
+    tstart=time.time()
     while 1:
         data=rd.__next__()
         #print(data)
         if data is not None:
+            data['s_sync']=time.time()-tstart
             pickle.dump(data,pklfd,-1)
         if cap.grab():
             _,im=cap.retrieve()
+            pickle.dump({'c_sync':time.time()-tstart},pklfd,-1)
             pr.stdin.write(im.tostring())
             cv2.imshow('cv', im)
             k=cv2.waitKey(1)

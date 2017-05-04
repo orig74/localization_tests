@@ -28,8 +28,9 @@ data_struct ds;
 void chksum()
 {
   uint16_t sum=0;
+  ds.header=0xa5a5;
   ds.t_stemp=millis();
-  for(int i=1;i<(sizeof(ds)/2-2);i++)
+  for(int i=1;i<(sizeof(ds)/2-1);i++)
   {
     uint16_t* pds=(uint16_t*)&ds;
     sum+=pds[i];
@@ -37,7 +38,7 @@ void chksum()
   ds.footer=sum;
 }
 
-#define LED_PIN 13
+#define LED_PIN 17
 bool blinkState = false;
 int iters=0;
 
@@ -65,7 +66,6 @@ void setup() {
 
    // configure Arduino LED for
    pinMode(LED_PIN, OUTPUT);
-   ds.header=0xa5a5;
 }
 
 

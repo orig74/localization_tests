@@ -19,9 +19,9 @@ def reader():
         chksum=struct.unpack('=H',ser.read(2))[0]
        
         calc_chksum=sum(struct.unpack('H'*13,raw_data))%2**16 
-        #if chksum!=calc_chksum:
-        #    print('Error, bad checksum',chksum,calc_chksum)
-        #    continue
+        if chksum!=calc_chksum:
+            print('Error, bad checksum',chksum,calc_chksum)
+            continue
 
         data=struct.unpack('='+'h'*9+'fi',raw_data)
         #print(data)
@@ -56,9 +56,13 @@ def ploter():
     alt_ref=None
 
     while True:
+        cnt+=1
         gy_data=yield
         history=history[-mem_len:]
         history.append(gy_data) 
+
+        if cnt%10!=0:
+            continue        
 
         for hdl in hdl_list:
             hdl[0].remove()
@@ -86,7 +90,6 @@ def ploter():
         fig.canvas.draw()
         plt.waitforbuttonpress(timeout=0.001)
                 
-        cnt+=1
 
 
 if __name__=="__main__":

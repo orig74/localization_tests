@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 lmap = lambda func, *iterable: list(map(func, *iterable))
 
 def reader():
-    ser = serial.Serial('/dev/ttyACM0',115200)
+    ser = serial.Serial('/dev/ttyUSB0',115200)
     while 1:
         while ser.inWaiting()<2:
             yield None
@@ -22,16 +22,17 @@ def reader():
         chksum=struct.unpack('=H',ser.read(2))[0]
        
         calc_chksum=sum(struct.unpack('H'*13,raw_data))%2**16 
-        if chksum!=calc_chksum:
-            print('Error, bad checksum',chksum,calc_chksum)
-            continue
+        #if chksum!=calc_chksum:
+        #    print('Error, bad checksum',chksum,calc_chksum)
+        #    continue
 
         data=struct.unpack('='+'h'*9+'fi',raw_data)
         #print(data)
         ret['a/g']=np.array(lmap(float,data[:6]))
         ret['mag']=np.array(lmap(float,data[6:9]))
         ret['alt']=data[9]
-        ret['t_stemp_ms']=data[10]
+        ret['t_stemp_ms']=data[10]/1000.0
+        #print('==== {:.3f}'.format(data[10]/1e6))
         yield ret
         
 def file_reader(fname):
@@ -43,7 +44,7 @@ def file_reader(fname):
     except EOFError:
         while 1:
             yield None
-            tim.sleep(0.01)
+            time.sleep(0.01)
 
 
 def ploter():
@@ -85,22 +86,32 @@ def ploter():
         acc_gyro=np.array(lmap(lambda x:x['a/g'],history))
         mag=np.array(lmap(lambda x:x['mag'],history))
         alt=np.array(lmap(lambda x:x['alt'],history))
+        #ts=np.array(lmap(lambda x:x['t_stemp_ms']/1000.0,history))
+        if 's_sync' in gy_data:
+            ts=np.array(lmap(lambda x:x['s_sync']/1000.0,history))
+        else:
+            ts=np.array(lmap(lambda x:x['t_stemp_ms']/1000.0,history))
         if alt_ref is None:
             alt_ref=alt[0]
 
-        hdl_list.append(ax1.plot(acc_gyro[:,0],'-b',alpha=0.5)) 
-        hdl_list.append(ax1.plot(acc_gyro[:,1],'-g',alpha=0.5)) 
-        hdl_list.append(ax1.plot(acc_gyro[:,2],'-r',alpha=0.5)) 
-                
-        hdl_list.append(ax2.plot(acc_gyro[:,3],'-b',alpha=0.5)) 
-        hdl_list.append(ax2.plot(acc_gyro[:,4],'-g',alpha=0.5)) 
-        hdl_list.append(ax2.plot(acc_gyro[:,5],'-r',alpha=0.5)) 
-
-        hdl_list.append(ax3.plot(mag[:,0],'-b',alpha=0.5)) 
-        hdl_list.append(ax3.plot(mag[:,1],'-g',alpha=0.5)) 
-        hdl_list.append(ax3.plot(mag[:,2],'-r',alpha=0.5)) 
+        hdl_list.append(ax1.plot(ts,acc_gyro[:,0],'-b',alpha=0.5)) 
+        hdl_list.append(ax1.plot(ts,acc_gyro[:,1],'-g',alpha=0.5)) 
+        hdl_list.append(ax1.plot(ts,acc_gyro[:,2],'-r',alpha=0.5)) 
+        ax1.set_xlim(ts.min(),ts.max())        
         
-        hdl_list.append(ax4.plot(alt-alt_ref,'-r',alpha=0.5)) 
+        hdl_list.append(ax2.plot(ts,acc_gyro[:,3],'-b',alpha=0.5)) 
+        hdl_list.append(ax2.plot(ts,acc_gyro[:,4],'-g',alpha=0.5)) 
+        hdl_list.append(ax2.plot(ts,acc_gyro[:,5],'-r',alpha=0.5)) 
+        ax2.set_xlim(ts.min(),ts.max())        
+
+        hdl_list.append(ax3.plot(ts,mag[:,0],'-b',alpha=0.5)) 
+        hdl_list.append(ax3.plot(ts,mag[:,1],'-g',alpha=0.5)) 
+        hdl_list.append(ax3.plot(ts,mag[:,2],'-r',alpha=0.5)) 
+        ax3.set_xlim(ts.min(),ts.max())        
+        
+        hdl_list.append(ax4.plot(ts,alt-alt_ref,'-r',alpha=0.5)) 
+        ax4.set_xlim(ts.min(),ts.max())
+        #if cnt<100:        
         fig.canvas.draw()
         plt.waitforbuttonpress(timeout=0.001)
                 
@@ -127,11 +138,16 @@ if 1 and  __name__=="__main__":
     rd=file_reader(prefix+'pkl')
     plot=ploter()
     plot.__next__()
+    start = time.time()
     while 1:
         data=rd.__next__()
         #print(data)
         if data is not None:
-            plot.send(data)
+            if 's_sync' in data:
+                while data['s_sync']>time.time()-start:
+                    time.sleep(0.001)
+            if 'a/g' in data:
+                plot.send(data)
         else:
             #print('Error data is None')
             time.sleep(0.01)

@@ -3,6 +3,19 @@
 #include "MPU6050.h"
 #include "HMC5883L.h"
 #include <MS5611.h>
+//// Importent in order for it to work
+//// must do changes in http://www.stm32duino.com/viewtopic.php?t=1000
+//The way I got it going was to modify two lines in the Arduino_STM32-Master files. In ..\Arduino\hardware\Arduino_STM32-master\STM32F1\libraries\ I added #define's to Wire.h:
+
+//in Wire.h
+//#define SDA PB11   // Added for STM32F103C8T6 Minimum Development Board
+//#define SCL PB10
+
+//in Wire.cpp
+//TwoWire Wire(PB10, PB11, SOFT_STANDARD);
+
+
+
 
 MS5611 ms5611;
 
@@ -27,18 +40,18 @@ data_struct ds;
 
 void chksum()
 {
-  uint16_t sum=0;
+  uint16_t tsum=0;
   ds.header=0xa5a5;
-  ds.t_stemp=millis();
+  ds.t_stemp=micros();
   for(int i=1;i<(sizeof(ds)/2-1);i++)
   {
     uint16_t* pds=(uint16_t*)&ds;
-    sum+=pds[i];
+    tsum+=pds[i];
   }
-  ds.footer=sum;
+  ds.footer=tsum;
 }
 
-#define LED_PIN 17
+#define LED_PIN PC13
 bool blinkState = false;
 int iters=0;
 
@@ -66,11 +79,13 @@ void setup() {
 
    // configure Arduino LED for
    pinMode(LED_PIN, OUTPUT);
+   
+
 }
 
 
 void loop() {
-   
+   unsigned long tdiff,toc,tic=micros();   
    accelgyro.getMotion6(&ds.ax, &ds.ay, &ds.az, &ds.gx, &ds.gy, &ds.gz);
    mag.getHeading(&ds.mx, &ds.my, &ds.mz);
      // Read raw values
@@ -89,27 +104,27 @@ void loop() {
    // display tab-separated accel/gyro x/y/z values
 #if 0
    Serial.print("a/g:\t");
-   Serial.print(ax); Serial.print("\t");
-   Serial.print(ay); Serial.print("\t");
-   Serial.print(az); Serial.print("\t");
-   Serial.print(gx); Serial.print("\t");
-   Serial.print(gy); Serial.print("\t");
-   Serial.print(gz);Serial.print("\t");
+   Serial.print(ds.ax); Serial.print("\t");
+   Serial.print(ds.ay); Serial.print("\t");
+   Serial.print(ds.az); Serial.print("\t");
+   Serial.print(ds.gx); Serial.print("\t");
+   Serial.print(ds.gy); Serial.print("\t");
+   Serial.print(ds.gz);Serial.print("\t");
    
    Serial.print("mag:\t");
-   Serial.print(mx); Serial.print("\t");
-   Serial.print(my); Serial.print("\t");
-   Serial.print(mz); Serial.print("\t");
+   Serial.print(ds.mx); Serial.print("\t");
+   Serial.print(ds.my); Serial.print("\t");
+   Serial.print(ds.mz); Serial.print("\t");
 
 // To calculate heading in degrees. 0 degree indicates North
-   float heading = atan2(my, mx);
+   float heading = atan2(ds.my, ds.mx);
    if(heading < 0)
      heading += 2 * M_PI;
    Serial.print("heading:\t");
    Serial.print(heading * 180/M_PI);Serial.print("\t");
 
    Serial.print("alt:\t");
-   Serial.println( absoluteAltitude );
+   Serial.println( ds.absoluteAltitude );
 #else
 
    chksum();
@@ -117,9 +132,11 @@ void loop() {
 #endif
    // blink LED to indicate activity
    iters+=1;
-   if(iters%10==0){
+   if(iters%100==0){
        blinkState = !blinkState;
        digitalWrite(LED_PIN, blinkState);
    }
-   delay(100); 
+   toc=micros();
+   tdiff=(toc-tic)/1000;
+   if (tdiff>0 & tdiff<50) delay(50-tdiff); 
 }

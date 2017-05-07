@@ -9,6 +9,9 @@ lmap = lambda func, *iterable: list(map(func, *iterable))
 
 def reader():
     ser = serial.Serial('/dev/ttyUSB0',115200)
+    ser.flush()
+    while ser.inWaiting():
+        ser.read()#flushing
     while 1:
         while ser.inWaiting()<2:
             yield None
@@ -69,15 +72,16 @@ def ploter():
     mem_len=200
     hdl_list=[]
     alt_ref=None
-
+    last_plot=time.time()
     while True:
         cnt+=1
         gy_data=yield
         history=history[-mem_len:]
         history.append(gy_data) 
 
-        if cnt%10!=0:
+        if time.time()-last_plot<0.2 and cnt%10!=0:
             continue        
+        last_plot=time.time()
 
         for hdl in hdl_list:
             hdl[0].remove()
@@ -135,7 +139,10 @@ if 0 and  __name__=="__main__":
 
 if 1 and  __name__=="__main__":
     #rd=reader()
+    import grabber,cv2
     rd=file_reader(prefix+'pkl')
+    cap=grabber.file_grabber(prefix+'avi')
+    
     plot=ploter()
     plot.__next__()
     start = time.time()
@@ -148,6 +155,12 @@ if 1 and  __name__=="__main__":
                     time.sleep(0.001)
             if 'a/g' in data:
                 plot.send(data)
+            if 'c_sync' in data:
+                _,im=cap.read()
+                cv2.imshow('cv',im)
+                key=cv2.waitKey(0)%256
+                if key==27:
+                    break            
         else:
             #print('Error data is None')
             time.sleep(0.01)

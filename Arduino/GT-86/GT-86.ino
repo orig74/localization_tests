@@ -42,7 +42,7 @@ void chksum()
 {
   uint16_t tsum=0;
   ds.header=0xa5a5;
-  ds.t_stemp=micros();
+  ds.t_stemp=millis();
   for(int i=1;i<(sizeof(ds)/2-1);i++)
   {
     uint16_t* pds=(uint16_t*)&ds;
@@ -132,11 +132,11 @@ void loop() {
 #endif
    // blink LED to indicate activity
    iters+=1;
-   if(iters%100==0){
+   if(iters%10==0){
        blinkState = !blinkState;
        digitalWrite(LED_PIN, blinkState);
    }
    toc=micros();
    tdiff=(toc-tic)/1000;
-   if (tdiff>0 & tdiff<50) delay(50-tdiff); 
+   if (tdiff>0 & tdiff<60) delay(60-tdiff); 
 }

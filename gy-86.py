@@ -4,6 +4,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from mpl_toolkits.mplot3d import Axes3D
+import argparse
+
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--video",default=1, type=int, help="test video number")
+    parser.add_argument("--video_prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
+    parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
+    parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
+    args = parser.parse_args()
 
 lmap = lambda func, *iterable: list(map(func, *iterable))
 
@@ -120,81 +130,76 @@ def ploter():
         plt.waitforbuttonpress(timeout=0.001)
                 
 
-prefix='data/manuvers_raw/mov%s.'%sys.argv[1]
 
-if 0 and  __name__=="__main__":
-    rd=reader()
-    #rd=file_reader(prefix+'pkl')
-    plot=ploter()
-    plot.__next__()
-    while 1:
-        data=rd.__next__()
-        #print(data)
-        if data is not None:
-            plot.send(data)
-        else:
-            #print('Error data is None')
-            time.sleep(0.01)
-
-
-if 1 and  __name__=="__main__":
-    #rd=reader()
-    import grabber,cv2
-    rd=file_reader(prefix+'pkl')
-    cap=grabber.file_grabber(prefix+'avi')
-    
-    plot=ploter()
-    plot.__next__()
-    start = time.time()
-    while 1:
-        data=rd.__next__()
-        #print(data)
-        if data is not None:
-            if 's_sync' in data:
-                while data['s_sync']>time.time()-start:
-                    time.sleep(0.001)
-            if 'a/g' in data:
+if  __name__=="__main__":
+    if args.sensor_only:
+        rd=reader()
+        #rd=file_reader(prefix+'pkl')
+        plot=ploter()
+        plot.__next__()
+        while 1:
+            data=rd.__next__()
+            #print(data)
+            if data is not None:
+                if 'a/g' in data:
+                    print(data['a/g'][:3])
                 plot.send(data)
-            if 'c_sync' in data:
-                _,im=cap.read()
-                cv2.imshow('cv',im)
-                key=cv2.waitKey(0)%256
-                if key==27:
-                    break            
-        else:
-            #print('Error data is None')
-            time.sleep(0.01)
+            else:
+                #print('Error data is None')
+                time.sleep(0.01)
 
+    elif not args.rec:
+        import grabber,cv2
+        rd=file_reader(args.prefix+'pkl')
+        cap=grabber.file_grabber(args.prefix+'avi')
+        
+        plot=ploter()
+        plot.__next__()
+        start = time.time()
+        while 1:
+            data=rd.__next__()
+            #print(data)
+            if data is not None:
+                if 's_sync' in data:
+                    while data['s_sync']>time.time()-start:
+                        time.sleep(0.001)
+                if 'a/g' in data:
+                    plot.send(data)
+                if 'c_sync' in data:
+                    _,im=cap.read()
+                    cv2.imshow('cv',im)
+                    key=cv2.waitKey(0)%256
+                    if key==27:
+                        break            
+            else:
+                time.sleep(0.01)
 
-
-if 0 and  __name__=="__main__":
-    import subprocess
-    import cv2
-    import pickle
-    pklfd=open(prefix+'pkl','wb')
-    cap=cv2.VideoCapture(1)
-    rd=reader()
-    #plot=ploter()
-    #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
-    cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 640x480 -r 30 -i - -an -vcodec libx264 {}'\
-            .format(prefix+'avi')
-    pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
-    #plot.__next__()
-    tstart=time.time()
-    while 1:
-        data=rd.__next__()
-        #print(data)
-        if data is not None:
-            data['s_sync']=time.time()-tstart
-            pickle.dump(data,pklfd,-1)
-        if cap.grab():
-            _,im=cap.retrieve()
-            pickle.dump({'c_sync':time.time()-tstart},pklfd,-1)
-            pr.stdin.write(im.tostring())
-            cv2.imshow('cv', im)
-            k=cv2.waitKey(1)
-            if (k%256)==27:
-                break
+    elif args.rec:
+        import subprocess
+        import cv2
+        import pickle
+        pklfd=open(args.prefix+'pkl','wb')
+        cap=cv2.VideoCapture(1)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,320);
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT,240);
+        rd=reader()
+        #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
+        cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 -i - -an -vcodec libx264 {}'\
+                .format(args.prefix+'avi')
+        pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
+        tstart=time.time()
+        while 1:
+            data=rd.__next__()
+            if data is not None:
+                data['s_sync']=time.time()-tstart
+                pickle.dump(data,pklfd,-1)
+            if cap.grab():
+                _,im=cap.retrieve()
+                pickle.dump({'c_sync':time.time()-tstart},pklfd,-1)
+                pr.stdin.write(im.tostring())
+                #k=cv2.waitKey(1)
+                #if (k%256)==27:
+                #    break
 
    
 

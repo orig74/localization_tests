@@ -136,8 +136,8 @@ def ploter():
 
 if  __name__=="__main__":
     if args.sensor_only:
-        #rd=reader()
-        rd=file_reader(prefix+'pkl')
+        rd=reader()
+        #rd=file_reader(prefix+'pkl')
         plot=ploter()
         plot.__next__()
         while 1:
@@ -146,7 +146,7 @@ if  __name__=="__main__":
             if data is not None:
                 if 'a/g' in data:
                     print(data['a/g'][:3])
-                plot.send(data)
+                    plot.send(data)
             else:
                 #print('Error data is None')
                 time.sleep(0.01)

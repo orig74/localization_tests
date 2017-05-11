@@ -2,11 +2,12 @@
 import subprocess
 import numpy as np
 import time
-import os,re
+import os,re,sys
 
 class file_grabber():
     def __init__(self,fname):
         #detect image size
+        print('Trying to open',fname)
         aaa=os.popen('ffprobe {} 2>&1'.format(fname)).read()
         self.size=tuple(map(int,re.search('[0-9]{3,4}x[0-9]{3,4}',aaa).group(0).split('x')))
 
@@ -27,7 +28,9 @@ class file_grabber():
 
 if __name__=='__main__':
     import cv2
-    cap=file_grabber('output.mkv')
+
+    fname=sys.argv[1]
+    cap=file_grabber(fname)
     while 1:
         _,im=cap.read()
         cv2.imshow('im',im)

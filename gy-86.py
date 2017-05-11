@@ -9,11 +9,14 @@ import argparse
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video",default=1, type=int, help="test video number")
+    parser.add_argument("--video",default=1, type=str, help="test video number")
+    parser.add_argument("--dev",default=0, type=int, help="v4l2 dev number (camera number)")
     parser.add_argument("--prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
     parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
     parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
     args = parser.parse_args()
+
+prefix = args.prefix%args.video
 
 lmap = lambda func, *iterable: list(map(func, *iterable))
 
@@ -134,7 +137,7 @@ def ploter():
 if  __name__=="__main__":
     if args.sensor_only:
         #rd=reader()
-        rd=file_reader(args.prefix+'pkl')
+        rd=file_reader(prefix+'pkl')
         plot=ploter()
         plot.__next__()
         while 1:
@@ -150,12 +153,14 @@ if  __name__=="__main__":
 
     elif not args.rec:
         import grabber,cv2
-        rd=file_reader(args.prefix+'pkl')
-        cap=grabber.file_grabber(args.prefix+'avi')
+        rd=file_reader(prefix+'pkl')
+        cap=grabber.file_grabber(prefix+'avi')
         
         plot=ploter()
         plot.__next__()
         start = time.time()
+        frame_cnt=0
+        sensor_cnt=0
         while 1:
             data=rd.__next__()
             #print(data)
@@ -163,10 +168,18 @@ if  __name__=="__main__":
                 if 's_sync' in data:
                     while data['s_sync']>time.time()-start:
                         time.sleep(0.001)
+                    sensor_cnt+=1
+
                 if 'a/g' in data:
                     plot.send(data)
                 if 'c_sync' in data:
                     _,im=cap.read()
+                    frame_cnt+=1
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    cv2.putText(im,'%d'%frame_cnt,(100,100), font, 0.3,(255,255,255),1,cv2.LINE_AA)
+                    cv2.putText(im,'%d'%sensor_cnt,(100,130), font, 0.3,(255,255,255),1,cv2.LINE_AA)
+                    cv2.putText(im,'%.3f'%data['c_sync'],(100,160), font, 0.3,(255,255,255),1,cv2.LINE_AA)
+
                     cv2.imshow('cv',im)
                     key=cv2.waitKey(0)%256
                     if key==27:
@@ -178,14 +191,14 @@ if  __name__=="__main__":
         import subprocess
         import cv2
         import pickle
-        pklfd=open(args.prefix+'pkl','wb')
-        cap=cv2.VideoCapture(1)
+        pklfd=open(prefix+'pkl','wb')
+        cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,320);
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT,240);
         rd=reader()
         #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
         cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 -i - -an -vcodec libx264 {}'\
-                .format(args.prefix+'avi')
+                .format(prefix+'avi')
         pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
         tstart=time.time()
         while 1:

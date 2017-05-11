@@ -10,7 +10,7 @@ import argparse
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--video",default=1, type=int, help="test video number")
-    parser.add_argument("--video_prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
+    parser.add_argument("--prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
     parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
     parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
     args = parser.parse_args()
@@ -133,8 +133,8 @@ def ploter():
 
 if  __name__=="__main__":
     if args.sensor_only:
-        rd=reader()
-        #rd=file_reader(prefix+'pkl')
+        #rd=reader()
+        rd=file_reader(args.prefix+'pkl')
         plot=ploter()
         plot.__next__()
         while 1:

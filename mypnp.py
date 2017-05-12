@@ -30,7 +30,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
     #rl=15.0/180.0*np.pi
     #bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-    reps=np.radians(np.array([0.2,0.2,0.3]))
+    reps=np.radians(np.array([0.2,0.2,0.2]))
     zeps=0.1
     bounds=([-np.inf]*6,[np.inf]*6)
 

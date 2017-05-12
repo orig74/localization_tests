@@ -145,7 +145,7 @@ if  __name__=="__main__":
             #print(data)
             if data is not None:
                 if 'a/g' in data:
-                    print(data['a/g'][:3])
+                    print(data['a/g'][:3],data['mag'])
                     plot.send(data)
             else:
                 #print('Error data is None')

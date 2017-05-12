@@ -184,13 +184,20 @@ def main():
     global K,distortion
     ground_truth=None
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
-    if args.dev>=0: #live camera
+
+
+    ######## camera options
+
+    #live camera
+    if args.dev>=0: 
         K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
                5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
 
         distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
         cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FPS,60)
+
+    #syntetic sim
     elif args.sim: 
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         cap=camerasim.Capture(K.flatten(),(240,320))
@@ -211,8 +218,9 @@ def main():
         distortion=np.zeros(5)
         cap.read()
         start_alt=ground_truth.__next__()['posz']
+
+    #ue4 simulated video
     else:
-        #ue4 simulated video
         if args.video in [1,2,4]:
             K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         else:
@@ -335,7 +343,7 @@ def main():
 
 
 if __name__=='__main__':
-    if 0:
+    if 1:
         import cProfile
         cProfile.run('main()','mainstats')
         import pstats

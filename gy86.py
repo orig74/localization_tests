@@ -62,6 +62,11 @@ def file_reader(fname):
             yield None
             time.sleep(0.01)
 
+def extruct_rot_alt(data):
+    # calib vals from: rot_from_mag_acc.ipynb
+    pass
+
+
 def vid_sync_reader(prefix):
     rd=open(prefix+'pkl','rb')
     cap=grabber.file_grabber(prefix+'avi')

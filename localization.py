@@ -12,13 +12,18 @@ import argparse
 import camerasim
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--video",default=1, type=int, help="test video number")
+parser.add_argument("--video", type=str, help=\
+        "test video base name (e.g. without .avi)\n"
+        "for example: data/manuvers_UE4/manuever2")
+parser.add_argument("--video_type", default='sim'  ,type=str , help="ue4 , sim , live_rec_gy86")
+
+#for know no live camera 
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
+
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
 parser.add_argument("--wait", help="wait for space",action="store_true")
-parser.add_argument("--sim", help="use camera simulation",action="store_true")
 args = parser.parse_args()
 
 
@@ -198,7 +203,7 @@ def main():
         cap.set(cv2.CAP_PROP_FPS,60)
 
     #syntetic sim
-    elif args.sim: 
+    elif args.video_type == 'sim': 
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
         cap=camerasim.Capture(K.flatten(),(240,320))
         def _ground_truth():
@@ -220,12 +225,14 @@ def main():
         start_alt=ground_truth.__next__()['posz']
 
     #ue4 simulated video
-    else:
-        if args.video in [1,2,4]:
-            K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
-        else:
-            K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
-        base_name='manuever{}'.format(args.video)
+    elif args.video_type == 'ue4':
+        #if args.video in [1,2,4]:
+        #    K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
+        #else:
+        #    K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
+        base_name=args.video
+        K=np.array(eval(open(base_name+'.cam').read())).reshape((3,3)) 
+
 
         distortion=np.zeros(5)
         #cap=file_grabber('output_ue4.avi')
@@ -295,12 +302,12 @@ def main():
             #print('gt=',gt_pos_data)
         if ret:
             if cnt==0:
-                if args.sim:
+                if args.video_type == 'sim':
                     init_of_sim(img,cap)
                 else:
                     init_of(img)
             else:
-                if args.sim:
+                if args.video_type == 'sim':
                     calc_of_sim(img,cap)
                 else:
                     calc_of(img)
@@ -343,7 +350,7 @@ def main():
 
 
 if __name__=='__main__':
-    if 1:
+    if 0:
         import cProfile
         cProfile.run('main()','mainstats')
         import pstats

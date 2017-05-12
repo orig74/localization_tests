@@ -226,10 +226,6 @@ def main():
 
     #ue4 simulated video
     elif args.video_type == 'ue4':
-        #if args.video in [1,2,4]:
-        #    K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
-        #else:
-        #    K=np.array([58.0,0,160, 0,58.0,120.0,0,0,1]).reshape((3,3)) #f=58, frame size=(320,240) , fov=140
         base_name=args.video
         K=np.array(eval(open(base_name+'.cam').read())).reshape((3,3)) 
 
@@ -262,6 +258,12 @@ def main():
                 if gt_pos_data:
                     start_alt=gt_pos_data['posz']
 
+    elif args.video_type == 'live_rec_gy86':
+        #from gy-86 
+
+    else:
+        print('Error unknown args.video_type: ',args.video_type)
+        sys.exit(-1)
         
     view3d=viewer.plot3d()
     view3d.__next__()  

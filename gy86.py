@@ -16,7 +16,7 @@ if __name__=="__main__":
     parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
     args = parser.parse_args()
 
-prefix = args.prefix%args.video
+    prefix = args.prefix%args.video
 
 lmap = lambda func, *iterable: list(map(func, *iterable))
 

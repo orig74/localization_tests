@@ -188,17 +188,20 @@ from grabber import file_grabber
 def main():
     global K,distortion
     ground_truth=None
+    sensor_estimate=None
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
 
 
     ######## camera options
+    sony_cam_mat=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
+               5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
+    sony_distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
+
 
     #live camera
     if args.dev>=0: 
-        K=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
-               5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
-
-        distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
+        K=sony_cam_mat
+        distortion = sony_distortion
         cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FPS,60)
 
@@ -259,7 +262,13 @@ def main():
                     start_alt=gt_pos_data['posz']
 
     elif args.video_type == 'live_rec_gy86':
-        #from gy-86 
+        from gy86 import vid_sync_reader
+        K=sony_cam_mat*np.diagonal([0.5,0.5,1]) #resolution 320x240 check!!
+        distortion = sony_distortion
+        base_name=args.video
+        cap=vid_sync_reader(base_name)
+        sensor_estimate=True
+
 
     else:
         print('Error unknown args.video_type: ',args.video_type)
@@ -320,6 +329,8 @@ def main():
                 alt_tresh=1.0
             if alt_tresh>0 and not start_recover:
                 ret,R,T=recover_pos()
+                if sensor_estimate:
+                    relative_rot=cv2.rodrigues(ret['rot']) #check
                 triangulate(R,T,alt_tresh)
                 start_recover=True
             if start_recover:
@@ -330,7 +341,11 @@ def main():
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
-                
+                if sensor_estimate:
+                    rmat,_=cv2.rodrigues(ret['rot'])
+                    R_vec_gt = np.dot(relative_rot.T,rmat) #check
+                    est_dict['alt']=ret['alt']
+                 
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 #import pdb;pdb.set_trace()
                 #ffff

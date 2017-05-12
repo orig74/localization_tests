@@ -9,7 +9,7 @@ import argparse
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video",default=1, type=str, help="test video number")
+    parser.add_argument("--video",default=1, type=str, help="test video name")
     parser.add_argument("--dev",default=0, type=int, help="v4l2 dev number (camera number)")
     parser.add_argument("--prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
     parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
@@ -61,6 +61,28 @@ def file_reader(fname):
         while 1:
             yield None
             time.sleep(0.01)
+
+def vid_sync_reader(prefix):
+    rd=open(prefix+'pkl','rb')
+    cap=grabber.file_grabber(prefix+'avi')
+    while 1:
+        try:
+            data=pickle.load(rd)
+            last_sensor_data=None
+            if data is not None:
+                if 's_sync' in data: #sensor data
+                    last_sensor_data=extruct_rot_alt(data)
+                if 'c_sync' in data: #camera_data
+                    _,img=cap.read()
+                    if last_sensor_data is None: #wait for first sensor data
+                        continue
+                    yield last_sensor_data,img
+    except EOFError:
+        while 1:
+            yield False,None
+            time.sleep(0.01)
+
+     
 
 
 def ploter():

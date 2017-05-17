@@ -262,11 +262,11 @@ def main():
                     start_alt=gt_pos_data['posz']
 
     elif args.video_type == 'live_rec_gy86':
-        from gy86 import vid_sync_reader
-        K=sony_cam_mat*np.diagonal([0.5,0.5,1]) #resolution 320x240 check!!
+        from gy86 import VidSyncReader 
+        K=sony_cam_mat*np.diag([0.5,0.5,1]) #resolution 320x240 check!!
         distortion = sony_distortion
         base_name=args.video
-        cap=vid_sync_reader(base_name)
+        cap=VidSyncReader(base_name)
         sensor_estimate=True
 
 
@@ -293,6 +293,9 @@ def main():
         if k==ord('b'):
             import pdb;pdb.set_trace()
         ret,img=cap.read()
+        if type(ret)==dict and 'alt' in ret and not start_recover:
+            print('alt=',ret['alt'])
+
         if ground_truth:
             try:
                 gt_pos_data=ground_truth.__next__()

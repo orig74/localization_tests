@@ -62,18 +62,46 @@ def file_reader(fname):
             yield None
             time.sleep(0.01)
 
+def norm(X):
+    return X/np.sqrt((X**2).sum(axis=0))
+
+
 def extruct_rot_alt(data):
+    import cv2
+    acc_vec=data['a/g'][:3]
+    mag_vec=data['mag']
+    
     # calib vals from: rot_from_mag_acc.ipynb
-    pass
+
+    mag_max,mag_min=np.array([ 769.,  579.,  408.]),np.array([-617., -669., -619.])
+    mag_vec-=mag_min
+    mag_vec=2*mag_vec/(mag_max-mag_min)
+
+    acc_max,acc_min=np.array([ 17252.4 , 16250. ,  14839.2]),np.array([-16271.6, -17088.,-18845.6])
+    acc_vec-=acc_min
+    acc_vec=2*acc_vec/(acc_max-acc_min)
+
+    mag_vec=norm(mag_vec)
+    acc_vec=norm(acc_vec)
+
+    a=acc_vec
+    aXm=np.cross(a,mag_vec)
+    aX_aXm=np.cross(a,aXm)
+
+    rod = cv2.Rodrigues(np.vstack([a,aXm,aX_aXm]))[0]
+    return {'rot':rod,'alt':data['alt']}
+
+
 
 
 def vid_sync_reader(prefix):
-    rd=open(prefix+'pkl','rb')
-    cap=grabber.file_grabber(prefix+'avi')
+    import grabber,pickle
+    rd=open(prefix+'.pkl','rb')
+    cap=grabber.file_grabber(prefix+'.avi')
+    last_sensor_data=None
     while 1:
         try:
             data=pickle.load(rd)
-            last_sensor_data=None
             if data is not None:
                 if 's_sync' in data: #sensor data
                     last_sensor_data=extruct_rot_alt(data)
@@ -82,12 +110,17 @@ def vid_sync_reader(prefix):
                     if last_sensor_data is None: #wait for first sensor data
                         continue
                     yield last_sensor_data,img
-    except EOFError:
-        while 1:
-            yield False,None
-            time.sleep(0.01)
+        except EOFError:
+            while 1:
+                yield False,None
+                time.sleep(0.01)
 
      
+class VidSyncReader():
+    def __init__(self,prefix):
+        self.gen=vid_sync_reader(prefix)
+    def read(self):
+        return self.gen.__next__()
 
 
 def ploter():

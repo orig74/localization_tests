@@ -3,6 +3,7 @@ from scipy.optimize import least_squares
 import numpy as np
 from numpy import matrix as mat
 import cv2
+import utils
 
 def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
 
@@ -24,13 +25,30 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
         ret=(ppts2d-pts2d).flatten()
         return ret.flatten()
   
+    def cost_eu(X):
+        rmat=utils.eulerAnglesToRotationMatrix(X[:3])
+
+        #estimating camera position and not T vec for creating alt bounds 
+        if alt_est_mod:
+            camera_pos=X[3:6]
+            #Rest,_=cv2.Rodrigues(eRvec)
+            #solving 0=RC+T => T=-RC
+            estimate_Tvec=(-mat(rmat)*mat(camera_pos).T).A1
+        else:
+            estimate_Tvec=X[3:6]
+        
+        eRvec,_ = cv2.Rodrigues(rmat)
+        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
+        ppts2d=ppts2d.reshape(-1,2)
+        ret=(ppts2d-pts2d).flatten()
+        return ret.flatten()
             
     #### define defferent bounds
  
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
     #rl=15.0/180.0*np.pi
     #bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-    reps=np.radians(np.array([0.2,0.2,0.2]))
+    reps=np.radians([20,3,3])
     zeps=0.1
     bounds=([-np.inf]*6,[np.inf]*6)
 
@@ -48,11 +66,16 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
             bounds[0][5]=estimation['alt']-zeps
             bounds[1][5]=estimation['alt']+zeps
         if 'rvec' in estimation:
-            X0[:3]=estimation['rvec']
-            bounds[0][:3]=estimation['rvec']-reps
-            bounds[1][:3]=estimation['rvec']+reps
+            if 0:
+                X0[:3]=estimation['rvec']
+                bounds[0][:3]=estimation['rvec']-reps
+                bounds[1][:3]=estimation['rvec']+reps
+            else:
+                X0[:3]=utils.rotationMatrixToEulerAngles(cv2.Rodrigues(estimation['rvec'])[0])
+                bounds[0][:3]=X0[:3]-reps
+                bounds[1][:3]=X0[:3]+reps
 
-    res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')
+    res=least_squares(cost_eu,X0,'3-point',bounds=bounds,method='trf')
     #res=least_squares(cost,X0,'3-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')

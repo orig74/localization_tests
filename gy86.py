@@ -66,6 +66,16 @@ def norm(X):
     return X/np.sqrt((X**2).sum(axis=0))
 
 
+class WinFilter():
+    def __init__(self,size):
+        self.arr=[]
+        self.size=size
+    def __call__(self,data):
+        self.arr.append(data)
+        if len(self.arr) > self.size:
+            self.arr.pop(0)
+        return sum(self.arr)/len(self.arr)
+
 def extruct_rot_alt(data):
     import cv2
     acc_vec=data['a/g'][:3]
@@ -99,12 +109,14 @@ def vid_sync_reader(prefix):
     rd=open(prefix+'.pkl','rb')
     cap=grabber.file_grabber(prefix+'.avi')
     last_sensor_data=None
+    alt_filter=WinFilter(15)
     while 1:
         try:
             data=pickle.load(rd)
             if data is not None:
                 if 's_sync' in data: #sensor data
                     last_sensor_data=extruct_rot_alt(data)
+                    last_sensor_data['alt']=alt_filter(last_sensor_data['alt'])
                 if 'c_sync' in data: #camera_data
                     _,img=cap.read()
                     if last_sensor_data is None: #wait for first sensor data
@@ -257,7 +269,8 @@ if  __name__=="__main__":
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT,240);
         rd=reader()
         #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
-        cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 -i - -an -vcodec libx264 {}'\
+        cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 '\
+                +'-i - -an -vcodec libx264 -preset ultrafast -crf 0 {}'\
                 .format(prefix+'avi')
         pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
         tstart=time.time()

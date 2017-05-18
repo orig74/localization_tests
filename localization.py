@@ -24,6 +24,7 @@ parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-open
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
 parser.add_argument("--wait", help="wait for space",action="store_true")
+parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
 args = parser.parse_args()
 
 
@@ -262,7 +263,7 @@ def main():
                     start_alt=gt_pos_data['posz']
 
     elif args.video_type == 'live_rec_gy86':
-        from gy86 import VidSyncReader 
+        from gy86 import VidSyncReader,WinFilter 
         K=sony_cam_mat*np.diag([0.5,0.5,1]) #resolution 320x240 check!!
         distortion = sony_distortion
         base_name=args.video
@@ -283,6 +284,8 @@ def main():
     last_alt=0
     while 1:
         k=cv2.waitKey(0 if args.wait else 1)
+        if args.wait:
+            print('fnum=',cnt)
         if k!=-1:
             #print('k=',k%256)
             k=k%256
@@ -294,7 +297,9 @@ def main():
             import pdb;pdb.set_trace()
         ret,img=cap.read()
         if type(ret)==dict and 'alt' in ret and not start_recover:
-            print('alt=',ret['alt'])
+            if cnt==10: #wait afew frames then mark the start altitdude
+                start_alt = ret['alt']
+                print('start_alt=',ret['alt'])
 
         if ground_truth:
             try:
@@ -328,12 +333,14 @@ def main():
             cnt+=1
             draw_ftrs(img)
             cv2.imshow('img',img)
-            if k==ord('a'):
+            if k==ord('a') or cnt==args.ftrang:
                 alt_tresh=1.0
+            if k==ord('g'):
+                args.wait=False
             if alt_tresh>0 and not start_recover:
-                ret,R,T=recover_pos()
+                _,R,T=recover_pos()
                 if sensor_estimate:
-                    relative_rot=cv2.rodrigues(ret['rot']) #check
+                    relative_rot=cv2.Rodrigues(ret['rot'])[0] #check
                 triangulate(R,T,alt_tresh)
                 start_recover=True
             if start_recover:
@@ -345,9 +352,13 @@ def main():
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
                 if sensor_estimate:
-                    rmat,_=cv2.rodrigues(ret['rot'])
-                    R_vec_gt = np.dot(relative_rot.T,rmat) #check
-                    est_dict['alt']=ret['alt']
+                    rmat,_=cv2.Rodrigues(ret['rot'])
+                    rmat = np.dot(relative_rot,rmat.T) #check
+                    R_vec,_=cv2.Rodrigues(rmat)
+                    est_alt=ret['alt']-start_alt
+                    est_dict['rvec']=R_vec.flatten()
+                    est_dict['alt']=est_alt
+                    view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
                  
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 #import pdb;pdb.set_trace()

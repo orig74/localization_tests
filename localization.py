@@ -23,6 +23,8 @@ parser.add_argument("--dev",default=-1, type=int, help="web camera device number
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
+parser.add_argument("--repres", help="rotataion representation for pnp2"\
+        "option are axisang(default) and eulerang ",default='axisang')
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
 args = parser.parse_args()
@@ -165,7 +167,7 @@ def solve_pos(estimate):
         if args.pnp==1:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
         if args.pnp==2:
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate)
+            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate, repres=args.repres)
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 

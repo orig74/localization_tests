@@ -5,51 +5,60 @@ from numpy import matrix as mat
 import cv2
 import utils
 
-def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
+def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
 
     alt_est_mod='alt' in estimation
-    def cost(X):
-        eRvec=X[:3]
 
-        #estimating camera position and not T vec for creating alt bounds 
-        if alt_est_mod:
-            camera_pos=X[3:6]
-            Rest,_=cv2.Rodrigues(eRvec)
-            #solving 0=RC+T => T=-RC
-            estimate_Tvec=(-mat(Rest)*mat(camera_pos).T).A1
-        else:
-            estimate_Tvec=X[3:6]
-        
-        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
-        ppts2d=ppts2d.reshape(-1,2)
-        ret=(ppts2d-pts2d).flatten()
-        return ret.flatten()
-  
-    def cost_eu(X):
-        rmat=utils.eulerAnglesToRotationMatrix(X[:3])
+    if repres=='axisang':
+        reps=np.ones(3)*0.1
+        zeps=0.1
+        def cost(X):
+            eRvec=X[:3]
 
-        #estimating camera position and not T vec for creating alt bounds 
-        if alt_est_mod:
-            camera_pos=X[3:6]
-            #Rest,_=cv2.Rodrigues(eRvec)
-            #solving 0=RC+T => T=-RC
-            estimate_Tvec=(-mat(rmat)*mat(camera_pos).T).A1
-        else:
-            estimate_Tvec=X[3:6]
-        
-        eRvec,_ = cv2.Rodrigues(rmat)
-        ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
-        ppts2d=ppts2d.reshape(-1,2)
-        ret=(ppts2d-pts2d).flatten()
-        return ret.flatten()
+            #estimating camera position and not T vec for creating alt bounds 
+            if alt_est_mod:
+                camera_pos=X[3:6]
+                Rest,_=cv2.Rodrigues(eRvec)
+                #solving 0=RC+T => T=-RC
+                estimate_Tvec=(-mat(Rest)*mat(camera_pos).T).A1
+            else:
+                estimate_Tvec=X[3:6]
             
+            ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
+            ppts2d=ppts2d.reshape(-1,2)
+            ret=(ppts2d-pts2d).flatten()
+            return ret.flatten()
+
+    elif repres=='eulerang':
+        #definging epsilons
+        reps=np.radians([5,1,1])
+        zeps=0.1
+        def cost(X):
+            rmat=utils.eulerAnglesToRotationMatrix(X[:3])
+
+            #estimating camera position and not T vec for creating alt bounds 
+            if alt_est_mod:
+                camera_pos=X[3:6]
+                #Rest,_=cv2.Rodrigues(eRvec)
+                #solving 0=RC+T => T=-RC
+                estimate_Tvec=(-mat(rmat)*mat(camera_pos).T).A1
+            else:
+                estimate_Tvec=X[3:6]
+            
+            eRvec,_ = cv2.Rodrigues(rmat)
+            ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
+            ppts2d=ppts2d.reshape(-1,2)
+            ret=(ppts2d-pts2d).flatten()
+            return ret.flatten()
+    else:
+        print('Error bad representation')
+        return None
+                
     #### define defferent bounds
  
     #bounds=([-0.5,-0.5,-1,-3,-3,-3],[0.5,0.5,1,3,3,3])
     #rl=15.0/180.0*np.pi
     #bounds=([-rl,-rl,-1,-3,-3,0],[rl,rl,1,3,3,3])
-    reps=np.radians([20,3,3])
-    zeps=0.1
     bounds=([-np.inf]*6,[np.inf]*6)
 
     ### different methods for least sq.
@@ -62,31 +71,40 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None):
     
     if estimation is not None:
         if 'alt' in estimation:
-            X0[5]=estimation['alt']
             bounds[0][5]=estimation['alt']-zeps
             bounds[1][5]=estimation['alt']+zeps
+            X0[5]=np.clip(X0[5],bounds[0][5],bounds[1][5])
         if 'rvec' in estimation:
-            if 0:
-                X0[:3]=estimation['rvec']
-                bounds[0][:3]=estimation['rvec']-reps
-                bounds[1][:3]=estimation['rvec']+reps
-            else:
-                X0[:3]=utils.rotationMatrixToEulerAngles(cv2.Rodrigues(estimation['rvec'])[0])
-                bounds[0][:3]=X0[:3]-reps
-                bounds[1][:3]=X0[:3]+reps
+            estimated_rvec=estimation['rvec'].flatten()
+            prev_rvec=Rvec.flatten()
+            #wight=1
+            #combined_rvec=prev_rvec*wight+estimated_rvec*(1-wight)
+            X0[:3]=utils.rotationMatrixToEulerAngles(cv2.Rodrigues(prev_rvec)[0])
+            estimated_angs=utils.rotationMatrixToEulerAngles(cv2.Rodrigues(estimated_rvec)[0])
+            bounds[0][:3]=estimated_angs-reps
+            bounds[1][:3]=estimated_angs+reps
+            #if((X0[:3]>bounds[1][:3]).any() or (X0[:3]<bounds[0][:3]).any()):
+            #    print('`x0` is infeasible. trying estimation as x0', estimated_angs,X0[:3])
+            #    X0[:3]=estimated_angs
+            X0[:3]=np.clip(X0[:3],bounds[0][:3],bounds[1][:3])
 
-    res=least_squares(cost_eu,X0,'3-point',bounds=bounds,method='trf')
+    res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')
     #res=least_squares(cost,X0,'3-point',method='trf')
     #res=least_squares(cost,np.hstack((Rvec.flatten(),Tvec.flatten())),\
     #            '2-point',method='dogbox')
+    rot_ret=res.x[:3]
+
+    if repres=='eulerang': 
+        #conver x[:3] back to axis angle
+        rot_ret=cv2.Rodrigues(utils.eulerAnglesToRotationMatrix(rot_ret))[0]
 
     #retuning Tvec
     if alt_est_mod:
         #solving 0=RC+T => T=-RC
-        Rest,_=cv2.Rodrigues(res.x[:3])
+        Rest,_=cv2.Rodrigues(rot_ret)
         estimate_Tvec=(-mat(Rest)*mat(res.x[3:6]).T).A1
     else:
         estimate_Tvec=res.x[3:6]
     #print('X=',res.message)
-    return True,res.x[:3],estimate_Tvec
+    return True,rot_ret,estimate_Tvec
  

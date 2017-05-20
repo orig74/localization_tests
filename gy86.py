@@ -109,12 +109,14 @@ def vid_sync_reader(prefix):
     rd=open(prefix+'.pkl','rb')
     cap=grabber.file_grabber(prefix+'.avi')
     last_sensor_data=None
-    alt_filter=WinFilter(15)
+    alt_filter=WinFilter(25)
+    ag_filter=WinFilter(25)
     while 1:
         try:
             data=pickle.load(rd)
             if data is not None:
                 if 's_sync' in data: #sensor data
+                    data['a/g']=ag_filter(data['a/g'])
                     last_sensor_data=extruct_rot_alt(data)
                     last_sensor_data['alt']=alt_filter(last_sensor_data['alt'])
                 if 'c_sync' in data: #camera_data

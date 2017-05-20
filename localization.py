@@ -265,7 +265,7 @@ def main():
                     start_alt=gt_pos_data['posz']
 
     elif args.video_type == 'live_rec_gy86':
-        from gy86 import VidSyncReader,WinFilter 
+        from gy86 import VidSyncReader 
         K=sony_cam_mat*np.diag([0.5,0.5,1]) #resolution 320x240 check!!
         distortion = sony_distortion
         base_name=args.video
@@ -358,8 +358,10 @@ def main():
                     rmat = np.dot(relative_rot,rmat.T) #check
                     R_vec,_=cv2.Rodrigues(rmat)
                     est_alt=ret['alt']-start_alt
-                    est_dict['rvec']=R_vec.flatten()
-                    est_dict['alt']=est_alt
+                    if args.rest:
+                        est_dict['rvec']=R_vec.flatten()
+                    if args.zest: 
+                        est_dict['alt']=est_alt
                     view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
                  
                 resPnP,Rvec,Tvec=solve_pos(est_dict)

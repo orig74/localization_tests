@@ -10,7 +10,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
     alt_est_mod='alt' in estimation
 
     if repres=='axisang':
-        reps=np.ones(3)*0.1
+        reps=np.ones(3)*np.radians(1)
         zeps=0.1
         def cost(X):
             eRvec=X[:3]
@@ -31,7 +31,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
 
     elif repres=='eulerang':
         #definging epsilons
-        reps=np.radians([5,1,1])
+        reps=np.radians([0.5,0.1,0.1])
         zeps=0.1
         def cost(X):
             rmat=utils.eulerAnglesToRotationMatrix(X[:3])

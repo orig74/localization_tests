@@ -14,4 +14,4 @@
 
     python localization.py --video_type=ue4 --video data/manuvers_UE4/manuever2 --pnp 2 --zest --rest --repres eulerang
 
-
+    python localization.py --video_type=live_rec_gy86 --video data/manuvers_raw/mov_test_17 --pnp 2 --ftrang=130 --repres axisang --zest --rest

@@ -10,7 +10,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
     alt_est_mod='alt' in estimation
 
     if repres=='axisang':
-        reps=np.ones(3)*np.radians(1)
+        reps=np.ones(3)*np.radians(2)
         zeps=0.1
         def cost(X):
             eRvec=X[:3]

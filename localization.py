@@ -284,6 +284,8 @@ def main():
     start_recover=False
     alt_tresh=-1
     last_alt=0
+    filt_campos=None
+
     while 1:
         k=cv2.waitKey(0 if args.wait else 1)
         if args.wait:
@@ -350,9 +352,11 @@ def main():
                 est_dict={}
                 if ground_truth and args.zest:
                     est_dict['alt']=(Tvec_gt[2]-start_alt)
+                    est_dict['alt']+=np.random.normal(0,0.05)
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
+                    est_dict['rvec']+=np.random.normal(0,np.radians(1),3)
                 if sensor_estimate:
                     rmat,_=cv2.Rodrigues(ret['rot'])
                     rmat = np.dot(relative_rot,rmat.T) #check
@@ -370,7 +374,10 @@ def main():
                 if resPnP:
                     Rest,_=cv2.Rodrigues(Rvec)
                     cam_pos=-mat(Rest).T*mat(Tvec).T
-                    view3d.send(('camera',(time.time(),Rest,cam_pos.A1)))
+                    if filt_campos is None:
+                        filt_campos=cam_pos
+                    filt_campos = filt_campos*0.9+cam_pos*0.1
+                    view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
                 else:

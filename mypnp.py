@@ -31,7 +31,8 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
 
     elif repres=='eulerang':
         #definging epsilons
-        reps=np.radians([0.5,0.1,0.1])
+        #reps=np.radians([0.5,0.1,0.1])
+        reps=np.radians([180,0.001,0.001])
         zeps=0.1
         def cost(X):
             rmat=utils.eulerAnglesToRotationMatrix(X[:3])
@@ -85,7 +86,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
             bounds[1][:3]=estimated_angs+reps
             #if((X0[:3]>bounds[1][:3]).any() or (X0[:3]<bounds[0][:3]).any()):
             #    print('`x0` is infeasible. trying estimation as x0', estimated_angs,X0[:3])
-            #    X0[:3]=estimated_angs
+            #X0[:3]=estimated_angs
             X0[:3]=np.clip(X0[:3],bounds[0][:3],bounds[1][:3])
 
     res=least_squares(cost,X0,'3-point',bounds=bounds,method='trf')

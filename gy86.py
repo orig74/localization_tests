@@ -109,8 +109,8 @@ def vid_sync_reader(prefix):
     rd=open(prefix+'.pkl','rb')
     cap=grabber.file_grabber(prefix+'.avi')
     last_sensor_data=None
-    alt_filter=WinFilter(10)
-    ag_filter=WinFilter(10)
+    alt_filter=WinFilter(40)
+    ag_filter=WinFilter(7)
     while 1:
         try:
             data=pickle.load(rd)

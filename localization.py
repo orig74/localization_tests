@@ -27,6 +27,10 @@ parser.add_argument("--repres", help="rotataion representation for pnp2"\
         "option are axisang(default) and eulerang ",default='axisang')
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
+
+parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
+parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal noise to attitude sensors defult is 0")
+
 args = parser.parse_args()
 
 
@@ -154,8 +158,8 @@ def solve_pos(estimate):
         #import pdb;pdb.set_trace()
 
         ### add noise
-
-        #p2=p2+np.random.normal(0,5,p2.shape)
+        if args.point_noise>0:
+            p2=p2+np.random.normal(0,args.point_noise,p2.shape)
         ###
 
 
@@ -367,6 +371,9 @@ def main():
                     if args.zest: 
                         est_dict['alt']=est_alt
                     view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
+
+                if 'rvec' in est_dict and args.rvec_noise>0: 
+                    est_dict['rvec'] += np.random.normal(0,args.rvec_noise,3)
                  
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 #import pdb;pdb.set_trace()

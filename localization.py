@@ -150,16 +150,18 @@ def triangulate(R,T,estimated_alt=1.0):
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
 Rvec,Tvec=None,None
-
+point_noise = np.zeros(2)
 def solve_pos(estimate):
-    global Rvec,Tvec
+    global Rvec,Tvec,point_noise
     try:
         p2=get_c()
         #import pdb;pdb.set_trace()
 
         ### add noise
         if args.point_noise>0:
-            p2=p2+np.random.normal(0,args.point_noise,p2.shape)
+            point_noise = np.random.normal(0,args.point_noise,p2.shape)
+            #import pdb;pdb.set_trace()
+            p2=p2+point_noise
         ###
 
 
@@ -196,6 +198,7 @@ def main():
     global K,distortion
     ground_truth=None
     sensor_estimate=None
+    rvec_noise = np.zeros(3)
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
 
 
@@ -373,8 +376,8 @@ def main():
                     view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
 
                 if 'rvec' in est_dict and args.rvec_noise>0: 
-                    est_dict['rvec'] += np.random.normal(0,args.rvec_noise,3)
-                 
+                    rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
+                    est_dict['rvec'] += rvec_noise               
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 #import pdb;pdb.set_trace()
                 #ffff

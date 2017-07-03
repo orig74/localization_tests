@@ -6,7 +6,7 @@ import utils
 from numpy import matrix as mat
 
 def generate_3d_points():
-    ax=np.linspace(-2,2,8)
+    ax=np.linspace(-2,2,3)
     xx,yy=np.meshgrid(ax,ax)
     return np.vstack((xx.flatten(),yy.flatten(),np.zeros(len(ax)**2))).T
 

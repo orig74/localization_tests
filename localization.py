@@ -27,6 +27,10 @@ parser.add_argument("--repres", help="rotataion representation for pnp2"\
         "option are axisang(default) and eulerang ",default='axisang')
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
+
+parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
+parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal noise to attitude sensors defult is 0")
+
 args = parser.parse_args()
 
 
@@ -146,16 +150,19 @@ def triangulate(R,T,estimated_alt=1.0):
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
 Rvec,Tvec=None,None
-
+point_noise = np.zeros(2)
 def solve_pos(estimate):
-    global Rvec,Tvec
+    global Rvec,Tvec,point_noise
     try:
         p2=get_c()
         #import pdb;pdb.set_trace()
 
         ### add noise
-
-        #p2=p2+np.random.normal(0,5,p2.shape)
+        if args.point_noise>0:
+            #point_noise = np.random.normal(0,args.point_noise,p2.shape)
+            point_noise = np.random.normal(0,args.point_noise,p2.shape)
+            #import pdb;pdb.set_trace()
+            p2=p2+point_noise
         ###
 
 
@@ -192,6 +199,7 @@ def main():
     global K,distortion
     ground_truth=None
     sensor_estimate=None
+    rvec_noise = np.zeros(3)
     np.set_printoptions(formatter={'all':lambda x: '{:10.3f}'.format(x)})
 
 
@@ -284,6 +292,8 @@ def main():
     start_recover=False
     alt_tresh=-1
     last_alt=0
+    filt_campos=None
+
     while 1:
         k=cv2.waitKey(0 if args.wait else 1)
         if args.wait:
@@ -350,9 +360,11 @@ def main():
                 est_dict={}
                 if ground_truth and args.zest:
                     est_dict['alt']=(Tvec_gt[2]-start_alt)
+                    est_dict['alt']+=np.random.normal(0,0.05)
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
+                    est_dict['rvec']+=np.random.normal(0,np.radians(1),3)
                 if sensor_estimate:
                     rmat,_=cv2.Rodrigues(ret['rot'])
                     rmat = np.dot(relative_rot,rmat.T) #check
@@ -363,14 +375,21 @@ def main():
                     if args.zest: 
                         est_dict['alt']=est_alt
                     view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
-                 
+
+                if 'rvec' in est_dict and args.rvec_noise>0: 
+                    rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
+                    est_dict['rvec'] += rvec_noise               
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
                 #import pdb;pdb.set_trace()
                 #ffff
                 if resPnP:
                     Rest,_=cv2.Rodrigues(Rvec)
                     cam_pos=-mat(Rest).T*mat(Tvec).T
-                    view3d.send(('camera',(time.time(),Rest,cam_pos.A1)))
+                    if filt_campos is None:
+                        filt_campos=cam_pos
+                    w=0.95
+                    filt_campos = filt_campos*w+cam_pos*(1-w)
+                    view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))
                 else:

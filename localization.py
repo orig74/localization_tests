@@ -159,6 +159,7 @@ def solve_pos(estimate):
 
         ### add noise
         if args.point_noise>0:
+            #point_noise = np.random.normal(0,args.point_noise,p2.shape)
             point_noise = np.random.normal(0,args.point_noise,p2.shape)
             #import pdb;pdb.set_trace()
             p2=p2+point_noise
@@ -386,7 +387,8 @@ def main():
                     cam_pos=-mat(Rest).T*mat(Tvec).T
                     if filt_campos is None:
                         filt_campos=cam_pos
-                    filt_campos = filt_campos*0.7+cam_pos*0.3
+                    w=0.95
+                    filt_campos = filt_campos*w+cam_pos*(1-w)
                     view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
                     pts3d=get_e()
                     view3d.send(('pts3d',pts3d))

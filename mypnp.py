@@ -5,9 +5,13 @@ from numpy import matrix as mat
 import cv2
 import utils
 
-def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
+def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang',
+            transfer_first=True):
 
     alt_est_mod='alt' in estimation
+    if transfer_first:
+        rotm=cv2.Rodrigues(Rvec)[0]
+        pts3d=mat(rotm)*mapt(pts3d)+Tvec
 
     if repres=='axisang':
         reps=np.ones(3)*np.radians(1)

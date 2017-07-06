@@ -387,7 +387,7 @@ def main():
                     cam_pos=-mat(Rest).T*mat(Tvec).T
                     if filt_campos is None:
                         filt_campos=cam_pos
-                    w=0.95
+                    w=0.5
                     filt_campos = filt_campos*w+cam_pos*(1-w)
                     view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
                     pts3d=get_e()

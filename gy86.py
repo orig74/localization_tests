@@ -1,4 +1,10 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+
+#to run recording include optitrack:
+
+#first find the rigid body number by running optitrack.py in the example below is 3
+#python gy86.py --prefix data/manuvers_optitrack/test%s --video 1 --dev 1 --rec --opti_track=3
+
 import serial,time,struct,math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,8 +16,9 @@ import argparse
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--video",default=1, type=str, help="test video name")
+    parser.add_argument("--opti_track",default=-1, type=int, help="optitrack rigid body id")
     parser.add_argument("--dev",default=0, type=int, help="v4l2 dev number (camera number)")
-    parser.add_argument("--prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
+    parser.add_argument("--prefix",default='data/manuvers_raw/mov%s', help="video prefix path")
     parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
     parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
     args = parser.parse_args()
@@ -211,7 +218,7 @@ def ploter():
 if  __name__=="__main__":
     if args.sensor_only:
         rd=reader()
-        #rd=file_reader(prefix+'pkl')
+        #rd=file_reader(prefix+'.pkl')
         plot=ploter()
         plot.__next__()
         while 1:
@@ -227,8 +234,8 @@ if  __name__=="__main__":
 
     elif not args.rec:
         import grabber,cv2
-        rd=file_reader(prefix+'pkl')
-        cap=grabber.file_grabber(prefix+'avi')
+        rd=file_reader(prefix+'.pkl')
+        cap=grabber.file_grabber(prefix+'.avi')
         
         plot=ploter()
         plot.__next__()
@@ -265,15 +272,20 @@ if  __name__=="__main__":
         import subprocess
         import cv2
         import pickle
-        pklfd=open(prefix+'pkl','wb')
+        pklfd=open(prefix+'.pkl','wb')
         cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,320);
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT,240);
         rd=reader()
+        if args.opti_track>0:
+            import optitrack 
+            ot = optitrack.optitrack_loop(args.opti_track)
+        else:
+            ot = None
         #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
         cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 '\
                 +'-i - -an -vcodec libx264 -preset ultrafast -crf 0 {}'\
-                .format(prefix+'avi')
+                .format(prefix+'.avi')
         pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
         tstart=time.time()
         while 1:
@@ -285,6 +297,11 @@ if  __name__=="__main__":
                 _,im=cap.retrieve()
                 pickle.dump({'c_sync':time.time()-tstart},pklfd,-1)
                 pr.stdin.write(im.tostring())
+            if ot:
+                odata=ot.__next__()
+                if odata:
+                    pickle.dump({'o_sync':time.time()-tstart,'odata':odata},pklfd,-1)
+                    
                 #k=cv2.waitKey(1)
                 #if (k%256)==27:
                 #    break

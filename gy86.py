@@ -11,7 +11,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--video",default=1, type=str, help="test video name")
     parser.add_argument("--dev",default=0, type=int, help="v4l2 dev number (camera number)")
-    parser.add_argument("--prefix",default='data/manuvers_raw/mov%s.', help="video prefix path")
+    parser.add_argument("--prefix",default='data/manuvers_raw/mov%s', help="video prefix path")
     parser.add_argument("--rec", help="record scenario",action="store_true",default=False)
     parser.add_argument("--sensor_only", help="test sensor",action="store_true",default=False)
     args = parser.parse_args()
@@ -211,7 +211,7 @@ def ploter():
 if  __name__=="__main__":
     if args.sensor_only:
         rd=reader()
-        #rd=file_reader(prefix+'pkl')
+        #rd=file_reader(prefix+'.pkl')
         plot=ploter()
         plot.__next__()
         while 1:
@@ -227,8 +227,8 @@ if  __name__=="__main__":
 
     elif not args.rec:
         import grabber,cv2
-        rd=file_reader(prefix+'pkl')
-        cap=grabber.file_grabber(prefix+'avi')
+        rd=file_reader(prefix+'.pkl')
+        cap=grabber.file_grabber(prefix+'.avi')
         
         plot=ploter()
         plot.__next__()
@@ -265,7 +265,7 @@ if  __name__=="__main__":
         import subprocess
         import cv2
         import pickle
-        pklfd=open(prefix+'pkl','wb')
+        pklfd=open(prefix+'.pkl','wb')
         cap=cv2.VideoCapture(args.dev)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,320);
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT,240);
@@ -273,7 +273,7 @@ if  __name__=="__main__":
         #http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
         cmd='ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 320x240 -r 30 '\
                 +'-i - -an -vcodec libx264 -preset ultrafast -crf 0 {}'\
-                .format(prefix+'avi')
+                .format(prefix+'.avi')
         pr=subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE)
         tstart=time.time()
         while 1:

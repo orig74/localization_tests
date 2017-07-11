@@ -1,2 +1,6 @@
 data
 __pycache__
+*.swp
+*.swn
+*.swo
+.ipynb_checkpoints

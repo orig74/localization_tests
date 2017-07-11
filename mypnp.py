@@ -11,7 +11,7 @@ def myPnP(pts3d,pts2d,K,distortion,Rvec,Tvec,estimation=None, repres='axisang'):
 
     alt_est_mod='alt' in estimation
 
-    estimated_rvec=Rvec if estimation is None else estimation['rvec'].flatten()
+    estimated_rvec=Rvec if estimation is None or 'rvec' not in estimation else estimation['rvec'].flatten()
     
 
     if repres=='axisang':

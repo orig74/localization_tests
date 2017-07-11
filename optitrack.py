@@ -33,11 +33,13 @@ if __name__ == '__main__':
                 version = packet.natnet_version
             #try manually identify the relevant rigid body
             #the list of rigid bodies is in packet 3
-            print(packet[3][0].id)
+            for pk in packet[3]:
+                print('%d: %.2f'%(pk.id,pk.position[1]),end=' ')
+            print()
 
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
     if 1:
-        l=optitrack_loop(3)
+        l=optitrack_loop(5)
         while 1:
             pack = l.__next__()
             if pack:

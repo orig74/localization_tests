@@ -25,4 +25,5 @@
 python gy86.py --prefix data/manuvers_optitrack/test%s --video 2
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test2 --pnp 2 --ftrang=190 --repres axisang --zest --rest
 
-
+##sending data files to my station
+cp data/manuvers_optitrack/test2.* oga13@linux.cosc.canterbury.ac.nz:learn/localization_tests/data/manuvers_optitrack/

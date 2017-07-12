@@ -1,15 +1,22 @@
 #!/bin/bash
-tmux new-session -d -s dronelab
-tmux send-keys "python drone_main_mlink.py"
+tmux new-session -d -s testing
+tmux send-keys "vim gy86.py" ENTER
+tmux send-keys ":tabnew optitrack.py" ENTER
 tmux split-window -h
-tmux send-keys "cd ../../dockers/sitl_image_px4/ && ./run_instance.sh $PX4_PATH 0" ENTER
-tmux send-keys "cd /PX4/Firmware" ENTER
-tmux send-keys "make posix_sitl_default jmavsim" 
 tmux split-window -v
-tmux send-keys "export DEMO_DIR=${PWD}" ENTER
-tmux send-keys "cd ${PROJECT_PATH}/Plugins/UE4PyServer/Source/PyServer" ENTER
-tmux send-keys "python config.py --entry_point=unreal_proxy --entry_path=\$DEMO_DIR" ENTER
-tmux send-keys "./run.sh" 
+tmux send-keys "python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test2 --pnp 2 --ftrang=190 --repres axisang --zest --rest"
+tmux new-window -n recording
+tmux split-window -h
+tmux send-keys "python optitrack.py d" 
+tmux split-window -v
+tmux send-keys "./upload.sh" 
+tmux split-window -v
+tmux send-keys "jupyter notebook" 
+tmux split-window -v
+tmux select-pane -t 0
+tmux send-keys "echo 'python gy86.py --prefix data/manuvers_optitrack/test%s --video 1 --dev 1 --rec --opti_track=3'"
+
+
 #tmux select-window -t 0
 tmux att
 

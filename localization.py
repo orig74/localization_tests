@@ -35,7 +35,7 @@ parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal no
 args = parser.parse_args()
 
 
-from mypnp import myPnP 
+from mypnp import myPnP_axisAng 
 
 N_FTRS=400
 
@@ -174,8 +174,31 @@ def solve_pos(estimate):
 
         if args.pnp==1:
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-        if args.pnp==2:
-            resPnP,Rvec,Tvec=myPnP(pts3d,p2,K,distortion,Rvec,Tvec,estimate, repres=args.repres)
+        if args.pnp>1:
+            #Tvec to cam pos
+            Rvec = estimate.get('rvec',Rvec)
+            Rmat,_=cv2.Rodrigues(Rvec)
+            cam_pos = (-Rmat.T @ Tvec).flatten()
+            bounds=([-np.inf]*6,[np.inf]*6) 
+
+            if 'alt' in estimate:
+                cam_pos[2]=estimate['alt']
+                zeps=0.3
+                bounds[0][5]=cam_pos[2]-zeps
+                bounds[1][5]=cam_pos[2]+zeps
+
+            if 'rvec' in estimate:
+                reps=np.ones(3)*np.radians(3)
+                bounds[0][:3] = Rvec - reps
+                bounds[1][:3] = Rvec + reps
+
+            estimation_vec = np.hstack(( Rvec, cam_pos))
+            resPnP,res=myPnP_axisAng(pts3d,p2,K,distortion,
+                    estimation_vec, bounds)
+            Rvec = res[:3]
+            #converting camera position to Tvec
+            Rmat,_=cv2.Rodrigues(Rvec)
+            Tvec = -Rmat @ res[3:]
             #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
             
 

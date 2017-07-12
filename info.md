@@ -27,3 +27,4 @@ python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrac
 
 ##sending data files to my station
 cp data/manuvers_optitrack/test2.* oga13@linux.cosc.canterbury.ac.nz:learn/localization_tests/data/manuvers_optitrack/
+

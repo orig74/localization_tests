@@ -38,6 +38,7 @@ def myPnP_axisAng(  pts3d, pts2d, K, distortion,
 
 def myPnP_Euler(  pts3d, pts2d, K, distortion, 
                     estimation_vec, #0-2 euler angles ,3-5 camera position (not Tvec) 
+                    prev_vec,
                     estimation_bounds):
     def cost(X):
         Rmat=utils.eulerAnglesToRotationMatrix(X[:3])

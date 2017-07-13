@@ -36,7 +36,7 @@ args = parser.parse_args()
 from mypnp import myPnP_axisAng 
 from mypnp import myPnP_Euler
 
-N_FTRS=400
+N_FTRS=40
 
 #start pix (sx,sy) curr image pixel (cx,cy) 
 ftr_columns=['cx','cy','sx','sy','ex','ey','ez']
@@ -200,7 +200,7 @@ def solve_pos(estimate):
                 eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
                 
                 if 'rvec' in estimate:
-                    reps=np.radians([15,8,8]) 
+                    reps=np.radians([15,1,1]) 
                     #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
                     bounds[0][:3] = eu_angls - reps
                     bounds[1][:3] = eu_angls + reps

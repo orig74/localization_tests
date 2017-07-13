@@ -39,6 +39,7 @@ def plot3d():
     ax1.set_zlim([2,-2])
     ax3.set_ylim([-2,2])
     ax3.set_xlim([-2,2])
+    ax3.axis('equal')
 
 
     t_start = time.time()

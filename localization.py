@@ -20,11 +20,9 @@ parser.add_argument("--video_type", default='sim'  ,type=str , help="ue4 , sim ,
 #for know no live camera 
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
 
-parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me")
+parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me axisand 3-me euler")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
-parser.add_argument("--repres", help="rotataion representation for pnp2"\
-        "option are axisang(default) and eulerang ",default='axisang')
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
 parser.add_argument("--skip", help="frames to skip in the beginning",type=int, default=50)
@@ -36,6 +34,7 @@ args = parser.parse_args()
 
 
 from mypnp import myPnP_axisAng 
+from mypnp import myPnP_Euler
 
 N_FTRS=400
 
@@ -187,15 +186,30 @@ def solve_pos(estimate):
                 bounds[0][5]=cam_pos[2]-zeps
                 bounds[1][5]=cam_pos[2]+zeps
 
-            if 'rvec' in estimate:
-                reps=np.ones(3)*np.radians(3)
-                bounds[0][:3] = Rvec - reps
-                bounds[1][:3] = Rvec + reps
+            if args.pnp==2:
+                if 'rvec' in estimate:
+                    reps=np.ones(3)*np.radians(3)
+                    bounds[0][:3] = Rvec - reps
+                    bounds[1][:3] = Rvec + reps
+                estimation_vec = np.hstack(( Rvec, cam_pos))
+                resPnP,res=myPnP_axisAng(pts3d,p2,K,distortion,
+                        estimation_vec, bounds)
+                Rvec = res[:3]
 
-            estimation_vec = np.hstack(( Rvec, cam_pos))
-            resPnP,res=myPnP_axisAng(pts3d,p2,K,distortion,
-                    estimation_vec, bounds)
-            Rvec = res[:3]
+            if args.pnp==3:
+                eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
+                
+                if 'rvec' in estimate:
+                    reps=np.radians([15,8,8]) 
+                    #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
+                    bounds[0][:3] = eu_angls - reps
+                    bounds[1][:3] = eu_angls + reps
+
+                estimation_vec = np.hstack(( eu_angls , cam_pos))
+                resPnP,res=myPnP_Euler(pts3d,p2,K,distortion,
+                        estimation_vec, bounds)
+                Rvec,_=cv2.Rodrigues(utils.eulerAnglesToRotationMatrix(res[:3]))
+
             #converting camera position to Tvec
             Rmat,_=cv2.Rodrigues(Rvec)
             Tvec = -Rmat @ res[3:]

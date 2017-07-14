@@ -118,6 +118,7 @@ def vid_sync_reader(prefix):
     last_sensor_data=None
     alt_filter=WinFilter(40)
     ag_filter=WinFilter(7)
+    last_optitrack_alt=None
     while 1:
         try:
             data=pickle.load(rd)
@@ -126,6 +127,10 @@ def vid_sync_reader(prefix):
                     data['a/g']=ag_filter(data['a/g'])
                     last_sensor_data=extruct_rot_alt(data)
                     last_sensor_data['alt']=alt_filter(last_sensor_data['alt'])
+                #    if last_optitrack_alt is not None:
+                #        last_sensor_data['alt']=last_optitrack_alt
+                #if 'o_sync' in data and last_sensor_data: #optitrack
+                #    last_optitrack_alt=data['odata'].position[1]
                 if 'c_sync' in data: #camera_data
                     _,img=cap.read()
                     if last_sensor_data is None: #wait for first sensor data

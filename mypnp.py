@@ -25,7 +25,8 @@ def myPnP_axisAng(  pts3d, pts2d, K, distortion,
 
         ppts2d,jac=cv2.projectPoints(pts3d,eRvec,estimate_Tvec,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
-        ret=(ppts2d-pts2d).flatten()
+        #ret=(ppts2d-pts2d).flatten()
+        ret=(ppts2d-pts2d)
         return ret.flatten()
     
     bounds=estimation_bounds
@@ -38,7 +39,6 @@ def myPnP_axisAng(  pts3d, pts2d, K, distortion,
 
 def myPnP_Euler(  pts3d, pts2d, K, distortion, 
                     estimation_vec, #0-2 euler angles ,3-5 camera position (not Tvec) 
-                    prev_vec,
                     estimation_bounds):
     def cost(X):
         Rmat=utils.eulerAnglesToRotationMatrix(X[:3])
@@ -51,7 +51,8 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
         Rvec,_ = cv2.Rodrigues(Rmat)
         ppts2d,jac=cv2.projectPoints(pts3d,Rvec,estimate_Tvec,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
-        ret=(ppts2d-pts2d).flatten()
+        ret=(ppts2d-pts2d)
+        #ret=ret[:,0]**2+ret[:,1]**2
         return ret.flatten()
 
 
@@ -59,5 +60,5 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
 
     res=least_squares(cost,X0,'3-point',bounds=estimation_bounds,method='trf')
 
-   #print('X=',res.message)
+    #print('X=',res.message)
     return True,res.x

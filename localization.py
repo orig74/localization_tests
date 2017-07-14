@@ -149,10 +149,10 @@ def triangulate(R,T,estimated_alt=1.0):
  
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
-Rvec,Tvec=None,None
+prev_pnp_result=None
 point_noise = np.zeros(2)
 def solve_pos(estimate):
-    global Rvec,Tvec,point_noise
+    global prev_pnp_result,point_noise
     try:
         p2=get_c()
         #import pdb;pdb.set_trace()
@@ -167,22 +167,35 @@ def solve_pos(estimate):
 
 
         pts3d=get_e()
-        if Rvec is None:
-            Rvec=np.array([[   0.0],[   0.0],[   0.0]])
-            Tvec=-np.array([[   0.0],[   0.0],[   7.0]]) # strting at positive alt Tvec=-Camera_pos
 
         if args.pnp==1:
+            if prev_pnp_result is None: 
+                prev_pnp_result = np.array(\
+                        [   0.0,0.0,0.0, #rvec
+                            0.0,0.0,-7.0, # strting at positive alt Tvec=-Camera_pos
+                            ])
+            Rvec=prev_pnp_result[:3]
+            Tvec=prev_pnp_result[3:]
             resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
+            prev_pnp_result[:3]=Rvec
+            prev_pnp_result[3:]=Tvec
+
         if args.pnp>1:
             #Tvec to cam pos
-            Rvec = estimate.get('rvec',Rvec)
+            if prev_pnp_result is None:
+                prev_pnp_result = np.array(\
+                        [   0.0,0.0,0.0, #rvec
+                            0.0,0.0,0.5]) # strting at positive alt Camera_pos
+
+            Rvec = estimate.get('rvec',prev_pnp_result[:3])
             Rmat,_=cv2.Rodrigues(Rvec)
-            cam_pos = (-Rmat.T @ Tvec).flatten()
+            cam_pos = prev_pnp_result[3:]
+            #cam_pos = (-Rmat.T @ Tvec).flatten()
             bounds=([-np.inf]*6,[np.inf]*6) 
 
             if 'alt' in estimate:
                 cam_pos[2]=estimate['alt']
-                zeps=0.3
+                zeps=0.1
                 bounds[0][5]=cam_pos[2]-zeps
                 bounds[1][5]=cam_pos[2]+zeps
 
@@ -200,14 +213,16 @@ def solve_pos(estimate):
                 eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
                 
                 if 'rvec' in estimate:
-                    reps=np.radians([15,1,1]) 
+                    reps=np.radians([35.1,0.1,0.1]) 
                     #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
                     bounds[0][:3] = eu_angls - reps
                     bounds[1][:3] = eu_angls + reps
 
                 estimation_vec = np.hstack(( eu_angls , cam_pos))
+                prev_pnp_result = np.clip( prev_pnp_result, bounds[0], bounds[1])
                 resPnP,res=myPnP_Euler(pts3d,p2,K,distortion,
-                        estimation_vec, bounds)
+                         prev_pnp_result, bounds)
+                prev_pnp_result = res
                 Rvec,_=cv2.Rodrigues(utils.eulerAnglesToRotationMatrix(res[:3]))
 
             #converting camera position to Tvec
@@ -242,9 +257,17 @@ def main():
 
 
     ######## camera options
-    sony_cam_mat=np.array( [ 5.5061780702480894e+02, 0., 3.1950000000000000e+02, 0.,
-               5.5061780702480894e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
-    sony_distortion=np.array([-1.4562697048176954e-01, 1.4717208761705844e-01, 0., 0.,-3.1843325596064148e-03])
+    #640x280
+    #sony_cam_mat=np.array( [ 5.5411829321732762e+02, 0., 3.1950000000000000e+02, 0.,
+    #           5.5411829321732762e+02, 2.3950000000000000e+02, 0., 0., 1. ]).reshape((3,3)) #sony
+    #sony_distortion=np.array([-1.5767246702411403e-01, 2.0073777106331972e-01, 0., 0.,
+    #           -6.8129177074104305e-02 ])
+    #320x240
+    sony_cam_mat=np.array( [ 2.8750015980595219e+02, 0., 1.5950000000000000e+02, 0.,
+               2.8750015980595219e+02, 1.1950000000000000e+02, 0., 0., 1. ] ).reshape((3,3)) #sony
+    sony_distortion=np.array([-2.0038004466909196e-01, 5.1964906681280620e-01, 0., 0.,
+               -8.6232173172164162e-01 ])
+
 
 
     #live camera
@@ -312,7 +335,7 @@ def main():
 
     elif args.video_type == 'live_rec_gy86':
         from gy86 import VidSyncReader 
-        K=sony_cam_mat*np.diag([0.5,0.5,1]) #resolution 320x240 check!!
+        K=sony_cam_mat
         distortion = sony_distortion
         base_name=args.video
         cap=VidSyncReader(base_name)
@@ -414,6 +437,7 @@ def main():
                         est_dict['rvec']=R_vec.flatten()
                     if args.zest: 
                         est_dict['alt']=est_alt
+                    
                     view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
 
                 if 'rvec' in est_dict and args.rvec_noise>0: 

@@ -23,6 +23,8 @@ parser.add_argument("--dev",default=-1, type=int, help="web camera device number
 parser.add_argument("--pnp",default=1, type=int, help="type of pnp method 1-opencv 2-me axisand 3-me euler")
 parser.add_argument("--zest", help="use alt estimation",action="store_true")
 parser.add_argument("--rest", help="use rotation estimation",action="store_true")
+
+parser.add_argument("--skipcvshow", help="skip show opencv window",action="store_true")
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
 parser.add_argument("--skip", help="frames to skip in the beginning",type=int, default=50)
@@ -138,9 +140,12 @@ def triangulate(R,T,estimated_alt=1.0):
     ###sanity check
     if 0:
         R_vec,_=cv2.Rodrigues(R)
-        ppts2d,jac=cv2.projectPoints(pts3d,R_vec,Trans,K,distortion)
+        ppts2d,jac=cv2.projectPoints(pts3d_trang,R_vec,trans_T,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-get_c()).flatten()
+        #import pylab
+        #pylab.plot(pts3d_trang[:,0],pts3d_trang[:,1],'+')
+        #pylab.show()
         import pdb;pdb.set_trace()
 
     ###
@@ -195,7 +200,7 @@ def solve_pos(estimate):
 
             if 'alt' in estimate:
                 cam_pos[2]=estimate['alt']
-                zeps=0.1
+                zeps=0.3
                 bounds[0][5]=cam_pos[2]-zeps
                 bounds[1][5]=cam_pos[2]+zeps
 
@@ -213,7 +218,7 @@ def solve_pos(estimate):
                 eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
                 
                 if 'rvec' in estimate:
-                    reps=np.radians([35.1,0.1,0.1]) 
+                    reps=np.radians([20.1,2.1,2.1]) 
                     #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
                     bounds[0][:3] = eu_angls - reps
                     bounds[1][:3] = eu_angls + reps
@@ -406,8 +411,9 @@ def main():
                 else:
                     calc_of(img)
             cnt+=1
-            draw_ftrs(img)
-            cv2.imshow('img',img)
+            if not args.skipcvshow:
+                draw_ftrs(img)
+                cv2.imshow('img',img)
             if k==ord('a') or cnt==args.ftrang:
                 alt_tresh=1.0
             if k==ord('g'):
@@ -415,6 +421,7 @@ def main():
             if alt_tresh>0 and not start_recover:
                 _,R,T=recover_pos()
                 if sensor_estimate:
+                    alt_tresh = ret['alt']-start_alt
                     relative_rot=cv2.Rodrigues(ret['rot'])[0] #check
                 triangulate(R,T,alt_tresh)
                 start_recover=True

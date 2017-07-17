@@ -30,3 +30,8 @@ cp data/manuvers_optitrack/test2.* oga13@linux.cosc.canterbury.ac.nz:learn/local
 
 ## good result on live
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12 --pnp 3 --ftrang=130 --zest --rest
+
+
+## last running 
+python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12 --pnp 3 --ftrang=140 --zest --rest
+

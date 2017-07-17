@@ -7,9 +7,16 @@ def isRotationMatrix(R) :
     I = np.identity(3, dtype = R.dtype)
     n = np.linalg.norm(I - shouldBeIdentity)
     return n < 1e-6
+
+import transformations as tr
+
+def rotationMatrixToEulerAngles(R):
+    return np.array(tr.euler_from_matrix(R, 'szxy'))
+
+def eulerAnglesToRotationMatrix(theta):
+    return tr.euler_matrix(*theta, 'szxy')[:3,:3]
                      
-                     
-def rotationMatrixToEulerAngles(R) :
+def ___rotationMatrixToEulerAngles(R) :
     assert(isRotationMatrix(R))
     sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
     singular = sy < 1e-6
@@ -25,7 +32,7 @@ def rotationMatrixToEulerAngles(R) :
     #return np.array([y, x, z])
 
 
-def eulerAnglesToRotationMatrix(theta) :
+def __eulerAnglesToRotationMatrix(theta) :
      
     R_x = np.array([[1,         0,                  0                   ],
                     [0,         math.cos(theta[0]), -math.sin(theta[0]) ],
@@ -45,7 +52,7 @@ def eulerAnglesToRotationMatrix(theta) :
                     ])
                      
                      
-    R = np.dot(R_z, np.dot( R_y, R_x ))
+    R = R_z @ ( R_y @  R_x )
     #R = np.dot(R_z, np.dot( R_x, R_y ))
  
     return R

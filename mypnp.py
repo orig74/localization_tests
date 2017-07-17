@@ -1,5 +1,5 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares,basinhopping
 import numpy as np
 import cv2
 import utils
@@ -52,13 +52,19 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
         ppts2d,jac=cv2.projectPoints(pts3d,Rvec,estimate_Tvec,K,distortion)
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-pts2d)
-        #ret=ret[:,0]**2+ret[:,1]**2
+        #return (ret[:,0]**2+ret[:,1]**2).sum()
         return ret.flatten()
 
 
     X0=estimation_vec
 
     res=least_squares(cost,X0,'3-point',bounds=estimation_bounds,method='trf')
+    #res=least_squares(cost,X0,'3-point',bounds=estimation_bounds,method='dogbox')
+    #import pdb;pdb.set_trace()
+    #res=basinhopping(cost,X0 )
+    #import pdb;pdb.set_trace()
+    #res=brute(cost,zip(*estimation_bounds))
 
     #print('X=',res.message)
+    print('X=',res.x)
     return True,res.x

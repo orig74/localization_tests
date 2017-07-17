@@ -27,6 +27,7 @@ parser.add_argument("--rest", help="use rotation estimation",action="store_true"
 parser.add_argument("--skipcvshow", help="skip show opencv window",action="store_true")
 parser.add_argument("--wait", help="wait for space",action="store_true")
 parser.add_argument("--ftrang", help="frame trangulation number default -1",type=int, default=-1)
+parser.add_argument("--override_alt", help="override messured alt",type=float, default=-1)
 parser.add_argument("--skip", help="frames to skip in the beginning",type=int, default=50)
 
 parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
@@ -199,8 +200,8 @@ def solve_pos(estimate):
             bounds=([-np.inf]*6,[np.inf]*6) 
 
             if 'alt' in estimate:
-                cam_pos[2]=estimate['alt']
-                zeps=0.3
+                cam_pos[2]=estimate['alt'] if args.override_alt==-1 else args.override_alt
+                zeps=0.1
                 bounds[0][5]=cam_pos[2]-zeps
                 bounds[1][5]=cam_pos[2]+zeps
 
@@ -218,7 +219,7 @@ def solve_pos(estimate):
                 eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
                 
                 if 'rvec' in estimate:
-                    reps=np.radians([20.1,2.1,2.1]) 
+                    reps=np.radians([2.1,2.1,2.1]) 
                     #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
                     bounds[0][:3] = eu_angls - reps
                     bounds[1][:3] = eu_angls + reps

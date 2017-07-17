@@ -53,7 +53,7 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-pts2d)
         #return (ret[:,0]**2+ret[:,1]**2).sum()
-        return ret.flatten()
+        return np.median(ret,axis=0)#ret.flatten()
 
 
     X0=estimation_vec

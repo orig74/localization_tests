@@ -148,6 +148,14 @@ def triangulate(R,T,start_alt,delta_alt):
     pts3d_trang=pts3d_trang/pts3d_trang[3,:]
     pts3d_trang=pts3d_trang.T[:,:3]
     #import pdb;pdb.set_trace()
+    
+    ### add noise
+    if args.point_noise>0:
+        #point_noise = np.random.normal(0,args.point_noise,p2.shape)
+        point_noise = np.random.normal(0,args.point_noise,pts3d_trang.shape)
+        #import pdb;pdb.set_trace()
+        pts3d_trang=pts3d_trang+point_noise
+    ###
 
     #pts3d_trang=camerasim.generate_3d_points(args.sim_spread,args.sim_npoints)
     ###sanity check
@@ -169,20 +177,13 @@ def triangulate(R,T,start_alt,delta_alt):
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
 prev_pnp_result=None
-point_noise = np.zeros(2)
+#point_noise = np.zeros(2)
 def solve_pos(estimate):
-    global prev_pnp_result,point_noise
+    global prev_pnp_result#,point_noise
     try:
         p2=get_c()
         #import pdb;pdb.set_trace()
 
-        ### add noise
-        if args.point_noise>0:
-            #point_noise = np.random.normal(0,args.point_noise,p2.shape)
-            point_noise = np.random.normal(0,args.point_noise,p2.shape)
-            #import pdb;pdb.set_trace()
-            p2=p2+point_noise
-        ###
 
 
         pts3d=get_e()
@@ -472,7 +473,7 @@ def main():
                     cam_pos=-mat(Rest).T*mat(Tvec).T
                     if filt_campos is None:
                         filt_campos=cam_pos
-                    w=0.5
+                    w=0.0
                     filt_campos = filt_campos*w+cam_pos*(1-w)
                     view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
                     pts3d=get_e()

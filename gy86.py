@@ -50,7 +50,6 @@ def reader():
         #    continue
 
         data=struct.unpack('='+'h'*9+'fi',raw_data)
-        #print(data)
         ret['a/g']=np.array(lmap(float,data[:6]))
         ret['mag']=np.array(lmap(float,data[6:9]))
         ret['alt']=data[9]
@@ -74,14 +73,18 @@ def norm(X):
 
 
 class WinFilter():
-    def __init__(self,size):
+    def __init__(self,size,remove_dc=False):
         self.arr=[]
         self.size=size
+        self.remove_dc=remove_dc
+        self.dc=0
     def __call__(self,data):
+        if self.remove_dc and self.dc==0:
+            self.dc=data
         self.arr.append(data)
         if len(self.arr) > self.size:
             self.arr.pop(0)
-        return sum(self.arr)/len(self.arr)
+        return sum(self.arr)/len(self.arr)-self.dc
 
 def extruct_rot_alt(data):
     import cv2
@@ -116,7 +119,7 @@ def vid_sync_reader(prefix):
     rd=open(prefix+'.pkl','rb')
     cap=grabber.file_grabber(prefix+'.avi')
     last_sensor_data=None
-    alt_filter=WinFilter(40)
+    alt_filter=WinFilter(40,True)
     ag_filter=WinFilter(7)
     last_optitrack_alt=None
     while 1:

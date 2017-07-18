@@ -120,7 +120,7 @@ def recover_pos(clean=True):
         features_state=features_state[mask.ravel()==255]
     return ret,R,T
    
-def triangulate(R,T,estimated_alt=1.0):
+def triangulate(R,T,start_alt,delta_alt):
     global features_state
     p1=get_s()
     p2=get_c()
@@ -129,22 +129,27 @@ def triangulate(R,T,estimated_alt=1.0):
     T=T.ravel()
 
     trans_T=(-mat(R).T*mat(T).T).A1
-    trans=np.array([trans_T[0]/trans_T[2], trans_T[1]/trans_T[2], 1.0]) * estimated_alt 
+    trans=np.array([trans_T[0]/trans_T[2], trans_T[1]/trans_T[2], 1.0]) * delta_alt
     trans=(mat(R)*mat(trans).T).A1
 
     
     p1=cv2.undistortPoints(p1.reshape(-1,1,2),K,distortion).reshape(-1,2)
     p2=cv2.undistortPoints(p2.reshape(-1,1,2),K,distortion).reshape(-1,2)
 
-    Proj1=np.hstack((np.eye(3),np.zeros((3,1))))
-    Proj2=np.hstack((R,-trans.reshape((3,1))))
-
-    pts3d_trang=cv2.triangulatePoints(Proj2,Proj1,p2.T,p1.T)
+    Proj1=np.eye(4)
+    Proj1[2,3]=-start_alt
+    #Proj1=np.hstack([np.eye(3),np.array([[0 , 0, -start_alt]]).T])
+    Proj2=np.eye(4)
+    Proj2[:3,:3]=R
+    Proj2[:3,3]=-trans
+    #Proj2=np.hstack((R,-trans.reshape((3,1)))) 
+    Proj2 = Proj2 @ Proj1
+    pts3d_trang=cv2.triangulatePoints(Proj2[:3,:],Proj1[:3,:],p2.T,p1.T)
     pts3d_trang=pts3d_trang/pts3d_trang[3,:]
     pts3d_trang=pts3d_trang.T[:,:3]
-    import pdb;pdb.set_trace()
+    #import pdb;pdb.set_trace()
 
-    pts3d_trang=camerasim.generate_3d_points(args.sim_spread,args.sim_npoints)
+    #pts3d_trang=camerasim.generate_3d_points(args.sim_spread,args.sim_npoints)
     ###sanity check
     if 0:
         R_vec,_=cv2.Rodrigues(R)
@@ -207,7 +212,7 @@ def solve_pos(estimate):
             #cam_pos = (-Rmat.T @ Tvec).flatten()
             bounds=([-np.inf]*6,[np.inf]*6) 
 
-            if 'alt' in estimate or args.override!=-1:
+            if 'alt' in estimate or args.override_alt != -1:
                 cam_pos[2]=estimate['alt'] if args.override_alt==-1 else args.override_alt
                 zeps=0.1
                 bounds[0][5]=cam_pos[2]-zeps
@@ -367,7 +372,7 @@ def main():
 
     cnt=0
     start_recover=False
-    alt_tresh=-1
+    delta_alt=-1
     last_alt=0
     filt_campos=None
 
@@ -394,7 +399,7 @@ def main():
             try:
                 gt_pos_data=ground_truth.__next__()
                 if gt_pos_data['posz']<=last_alt: #not climbing anymore
-                    alt_tresh=gt_pos_data['posz']-start_alt
+                    delta_alt=gt_pos_data['posz']-start_alt
                 last_alt=gt_pos_data['posz']
 
                 Tvec_gt=np.array([gt_pos_data['posx'],gt_pos_data['posy'],gt_pos_data['posz']])
@@ -424,21 +429,21 @@ def main():
                 draw_ftrs(img)
                 cv2.imshow('img',img)
             if k==ord('a') or cnt==args.ftrang:
-                alt_tresh=1.0
+                delta_alt=1.0
             if k==ord('g'):
                 args.wait=False
-            if alt_tresh>0 and not start_recover:
+            if delta_alt>0 and not start_recover:
                 _,R,T=recover_pos()
                 if sensor_estimate:
-                    alt_tresh = ret['alt']-start_alt
+                    delta_alt = ret['alt']-start_alt
                     relative_rot=cv2.Rodrigues(ret['rot'])[0] #check
-                triangulate(R,T,alt_tresh)
+                triangulate(R,T,start_alt,delta_alt)
                 start_recover=True
             if start_recover:
                 #ret,R,T=recover_pos(clean=False)
                 est_dict={}
                 if ground_truth and args.zest:
-                    est_dict['alt']=(Tvec_gt[2]-start_alt)
+                    est_dict['alt']=Tvec_gt[2]
                     #est_dict['alt']+=np.random.normal(0,0.05)
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)

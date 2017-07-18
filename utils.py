@@ -11,10 +11,10 @@ def isRotationMatrix(R) :
 import transformations as tr
 
 def rotationMatrixToEulerAngles(R):
-    return np.array(tr.euler_from_matrix(R, 'szxy'))
+    return np.array(tr.euler_from_matrix(R, 'sxyz'))
 
 def eulerAnglesToRotationMatrix(theta):
-    return tr.euler_matrix(*theta, 'szxy')[:3,:3]
+    return tr.euler_matrix(*theta, 'sxyz')[:3,:3]
                      
 def ___rotationMatrixToEulerAngles(R) :
     assert(isRotationMatrix(R))

@@ -12,7 +12,6 @@ def myPnP_axisAng(  pts3d, pts2d, K, distortion,
                     estimation_bounds):
 
 
-    reps=np.ones(3)*np.radians(10)
     #zeps=0.3
     def cost(X):
         eRvec=X[:3]
@@ -53,7 +52,8 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-pts2d)
         #return (ret[:,0]**2+ret[:,1]**2).sum()
-        return np.median(ret,axis=0)#ret.flatten()
+        #return np.median(ret,axis=0)#ret.flatten()
+        return ret.flatten()
 
 
     X0=estimation_vec

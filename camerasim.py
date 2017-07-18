@@ -5,8 +5,8 @@ import numpy as np
 import utils
 from numpy import matrix as mat
 
-def generate_3d_points():
-    ax=np.linspace(-2,2,3)
+def generate_3d_points(spread=0.06 , npoints=3):
+    ax=np.linspace(-spread,spread,npoints)
     xx,yy=np.meshgrid(ax,ax)
     return np.vstack((xx.flatten(),yy.flatten(),np.zeros(len(ax)**2))).T
 
@@ -26,35 +26,38 @@ def manuver1():
 def manuver2():
     #x,y,z,rx,ry,rz
     vec=np.zeros(6)
-    vec[2]=3
+    vec[2]=0.3
     #vec[3]=-90/180.0*np.pi
     for _ in range(50):
-        vec[2]+=0.1
+        vec[2]+=0.01
         yield vec
 
-    for rot_pitch,rot_roll in [(0,0),(200,20)]: 
+    for rot_pitch,rot_roll in [(0,0),(200,20)]:
+        sz=0.004
         for ind in range(400):
             if ind==0: 
-                step_x=-0.01
+                step_x=-sz
                 step_y=0
             if ind==100:
                 step_x=0
-                step_y=0.01
+                step_y=sz
             if ind==200:
-                step_x=0.01
+                step_x=sz
                 step_y=0
             if ind==300:
                 step_x=0
-                step_y=-0.01
+                step_y=-sz
             vec[0]-=step_x
             vec[1]+=step_y
             
             if rot_pitch>0:
                 pitch_sign=1 if (ind%rot_pitch)<(rot_pitch//2) else -1
-                vec[3]+=pitch_sign*0.1/180.0*np.pi
+                vec[3]+=pitch_sign*0.3/180.0*np.pi
+                vec[5]+=pitch_sign*0.3/180.0*np.pi
+                vec[2]+=pitch_sign*0.001
             if rot_roll>0:
                 roll_sign=1 if (ind%rot_roll)<(rot_roll//2) else -1
-                vec[4]+=roll_sign*0.1/180.0*np.pi
+                vec[4]+=roll_sign*0.2/180.0*np.pi
             yield vec
 
 def manuver3():
@@ -99,12 +102,14 @@ def manuver3():
 
 
 class Capture(object):
-    def __init__(self,camera_matrix,size,noise_model=None):
+    def __init__(self,camera_matrix,size,noise_model=None, spread=0.06 , npoints=3):
         self.K=mat(camera_matrix).reshape(3,3)
         self.size=size
         self.manuever=manuver2()
         self.last_points=None
         self.last_position=None
+        self.spread=spread
+        self.npoints=npoints
 
     def read(self):
         try:
@@ -125,7 +130,7 @@ class Capture(object):
             pts=pts[:,:2].T
         else:
             R_vec,_=cv2.Rodrigues(R)
-            pts,jac=cv2.projectPoints(generate_3d_points(),R_vec,T.A1,self.K,np.zeros(5))
+            pts,jac=cv2.projectPoints(generate_3d_points(self.spread , self.npoints),R_vec,T.A1,self.K,np.zeros(5))
             pts=pts.reshape(-1,2)
  
         for ptm in pts:

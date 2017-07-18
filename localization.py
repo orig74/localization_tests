@@ -16,6 +16,10 @@ parser.add_argument("--video", type=str, help=\
         "test video base name (e.g. without .avi)\n"
         "for example: data/manuvers_UE4/manuever2")
 parser.add_argument("--video_type", default='sim'  ,type=str , help="ue4 , sim , live_rec_gy86")
+parser.add_argument("--sim_spread", default=0.06  ,type=float , help="in sim distance spread between points")
+parser.add_argument("--sim_npoints", default=3  ,type=int , help="n-number of points in sim nXn grid")
+
+
 
 #for know no live camera 
 parser.add_argument("--dev",default=-1, type=int, help="web camera device number")
@@ -32,6 +36,7 @@ parser.add_argument("--skip", help="frames to skip in the beginning",type=int, d
 
 parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
 parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal noise to attitude sensors defult is 0")
+parser.add_argument("--rotation_bounds",default='2,2,2', type=str, help="rotation bounds in the form of x,y,z")
 
 args = parser.parse_args()
 
@@ -106,7 +111,7 @@ def recover_pos(clean=True):
     global features_state
     p1=get_s()
     p2=get_c()
-    E,mask=cv2.findEssentialMat(p1,p2,K,cv2.RANSAC,0.99,1.0)
+    E,mask=cv2.findEssentialMat(p1,p2,K,cv2.RANSAC,0.999,1.0)
     ret,R,T,mask=cv2.recoverPose(E,p1,p2,K,mask)
     #clean..
 
@@ -137,7 +142,9 @@ def triangulate(R,T,estimated_alt=1.0):
     pts3d_trang=cv2.triangulatePoints(Proj2,Proj1,p2.T,p1.T)
     pts3d_trang=pts3d_trang/pts3d_trang[3,:]
     pts3d_trang=pts3d_trang.T[:,:3]
-    #import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()
+
+    pts3d_trang=camerasim.generate_3d_points(args.sim_spread,args.sim_npoints)
     ###sanity check
     if 0:
         R_vec,_=cv2.Rodrigues(R)
@@ -145,6 +152,7 @@ def triangulate(R,T,estimated_alt=1.0):
         ppts2d=ppts2d.reshape(-1,2)
         ret=(ppts2d-get_c()).flatten()
         #import pylab
+        #pylab.figure()
         #pylab.plot(pts3d_trang[:,0],pts3d_trang[:,1],'+')
         #pylab.show()
         import pdb;pdb.set_trace()
@@ -199,7 +207,7 @@ def solve_pos(estimate):
             #cam_pos = (-Rmat.T @ Tvec).flatten()
             bounds=([-np.inf]*6,[np.inf]*6) 
 
-            if 'alt' in estimate:
+            if 'alt' in estimate or args.override!=-1:
                 cam_pos[2]=estimate['alt'] if args.override_alt==-1 else args.override_alt
                 zeps=0.1
                 bounds[0][5]=cam_pos[2]-zeps
@@ -207,7 +215,7 @@ def solve_pos(estimate):
 
             if args.pnp==2:
                 if 'rvec' in estimate:
-                    reps=np.ones(3)*np.radians(3)
+                    reps=np.radians(eval('['+args.rotation_bounds+']'))
                     bounds[0][:3] = Rvec - reps
                     bounds[1][:3] = Rvec + reps
                 estimation_vec = np.hstack(( Rvec, cam_pos))
@@ -219,7 +227,7 @@ def solve_pos(estimate):
                 eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
                 
                 if 'rvec' in estimate:
-                    reps=np.radians([2.1,2.1,2.1]) 
+                    reps=np.radians(eval('['+args.rotation_bounds+']')) 
                     #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
                     bounds[0][:3] = eu_angls - reps
                     bounds[1][:3] = eu_angls + reps
@@ -286,7 +294,7 @@ def main():
     #syntetic sim
     elif args.video_type == 'sim': 
         K=np.array([160.0,0,160, 0,160.0,120.0,0,0,1]).reshape((3,3))
-        cap=camerasim.Capture(K.flatten(),(240,320))
+        cap=camerasim.Capture(K.flatten(),(240,320),None,args.sim_spread,args.sim_npoints)
         def _ground_truth():
             while 1:
                 try:
@@ -431,11 +439,11 @@ def main():
                 est_dict={}
                 if ground_truth and args.zest:
                     est_dict['alt']=(Tvec_gt[2]-start_alt)
-                    est_dict['alt']+=np.random.normal(0,0.05)
+                    #est_dict['alt']+=np.random.normal(0,0.05)
                 if ground_truth and args.rest:
                     R_vec_gt,_=cv2.Rodrigues(R_gt)
                     est_dict['rvec']=R_vec_gt.flatten()
-                    est_dict['rvec']+=np.random.normal(0,np.radians(1),3)
+                    #est_dict['rvec']+=np.random.normal(0,np.radians(1),3)
                 if sensor_estimate:
                     rmat,_=cv2.Rodrigues(ret['rot'])
                     rmat = np.dot(relative_rot,rmat.T) #check

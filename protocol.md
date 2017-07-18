@@ -20,6 +20,10 @@ python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrac
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12 --pnp 2 --ftrang=140
 ### running on live data without zest (since its only relative alt and no accurate
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12 --pnp 3 --ftrang=140 --rest --rotation_bounds="3.0,3.0,3.0"
+python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12 --pnp 2 --ftrang=140 --rest --rotation_bounds="3.0,3.0,3.0"
+
+python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test11 --pnp 2 --ftrang=100 --rest --rotation_bounds="3.0,3.0,3.0"
+
 
 ##adding zest & rest
 python localization.py --video_type=sim --pnp 2 --point_noise=0.5 --zest --rest

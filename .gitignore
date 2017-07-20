@@ -4,3 +4,5 @@ __pycache__
 *.swn
 *.swo
 .ipynb_checkpoints
+out
+mainstats

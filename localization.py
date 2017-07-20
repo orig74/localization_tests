@@ -37,6 +37,8 @@ parser.add_argument("--skip", help="frames to skip in the beginning",type=int, d
 parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
 parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal noise to attitude sensors defult is 0")
 parser.add_argument("--rotation_bounds",default='2,2,2', type=str, help="rotation bounds in the form of x,y,z")
+parser.add_argument("--headless", help="running in headless mode",action="store_true")
+parser.add_argument("--dumpfile", help="dumping output data file name",type=str , default='')
 
 args = parser.parse_args()
 
@@ -367,9 +369,12 @@ def main():
     else:
         print('Error unknown args.video_type: ',args.video_type)
         sys.exit(-1)
-        
-    view3d=viewer.plot3d()
-    view3d.__next__()  
+    
+    if not args.headless:
+        view3d=viewer.plot3d()
+        view3d.__next__()  
+    if args.dumpfile:
+        dumpfile = open(args.dumpfile,'wb')
 
     cnt=0
     start_recover=False
@@ -378,7 +383,10 @@ def main():
     filt_campos=None
 
     while 1:
-        k=cv2.waitKey(0 if args.wait else 1)
+        if args.headless:
+            k=-1
+        else:
+            k=cv2.waitKey(0 if args.wait else 1)
         if args.wait:
             print('fnum=',cnt)
         if k!=-1:
@@ -395,7 +403,11 @@ def main():
             if cnt==10: #wait afew frames then mark the start altitdude
                 start_alt = ret['alt']
                 print('start_alt=',ret['alt'])
-
+        if ret is False and args.headless:
+            if args.dumpfile:
+                dumpfile.close()
+            break
+            
         if ground_truth:
             try:
                 gt_pos_data=ground_truth.__next__()
@@ -408,7 +420,12 @@ def main():
                 #eu_vec=np.array([gt_pos_data['pitch'],gt_pos_data['roll'],gt_pos_data['yaw']])
                 R_gt = utils.eulerAnglesToRotationMatrix(eu_vec/180.0*np.pi) 
                 
-                view3d.send(('camera_gt',(time.time(),R_gt,Tvec_gt)))
+                payload = ('camera_gt',(time.time(),R_gt,Tvec_gt))
+                if not args.headless:
+                    view3d.send(payload)
+                if args.dumpfile:
+                    pickle.dump(payload, dumpfile, -1)
+
             except EOFError:
                 pass
             except StopIteration:
@@ -460,7 +477,8 @@ def main():
                     if args.zest: 
                         est_dict['alt']=est_alt
                     
-                    view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
+                    if not args.headless:
+                        view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
 
                 if 'rvec' in est_dict and args.rvec_noise>0: 
                     rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
@@ -475,9 +493,13 @@ def main():
                         filt_campos=cam_pos
                     w=0.0
                     filt_campos = filt_campos*w+cam_pos*(1-w)
-                    view3d.send(('camera',(time.time(),Rest,filt_campos.A1)))
-                    pts3d=get_e()
-                    view3d.send(('pts3d',pts3d))
+                    payload = ('camera',(time.time(),Rest,filt_campos.A1))
+                    if not args.headless:
+                        view3d.send(payload)
+                        pts3d=get_e()
+                        view3d.send(('pts3d',pts3d)) 
+                    if args.dumpfile:
+                        pickle.dump(payload,dumpfile,-1)
                 else:
                     print('Error failed pnp')
 

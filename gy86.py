@@ -132,8 +132,9 @@ def vid_sync_reader(prefix):
                     last_sensor_data['alt']=alt_filter(last_sensor_data['alt'])
                 #    if last_optitrack_alt is not None:
                 #        last_sensor_data['alt']=last_optitrack_alt
-                #if 'o_sync' in data and last_sensor_data: #optitrack
-                #    last_optitrack_alt=data['odata'].position[1]
+                if 'o_sync' in data and last_sensor_data: #optitrack
+                    last_sensor_data['odata']=data['odata']
+                    #last_optitrack_alt=data['odata'].position[1]
                 if 'c_sync' in data: #camera_data
                     _,img=cap.read()
                     if last_sensor_data is None: #wait for first sensor data

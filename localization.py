@@ -1,6 +1,7 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 import pandas as pd
 import numpy as np
+np.random.seed(1001)
 from numpy import matrix as mat
 import cv2
 import math
@@ -10,6 +11,8 @@ import pickle,os
 import utils
 import argparse
 import camerasim
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--video", type=str, help=\
@@ -456,6 +459,8 @@ def main():
                     delta_alt = ret['alt']-start_alt
                     relative_rot=cv2.Rodrigues(ret['rot'])[0] #check
                 triangulate(R,T,start_alt,delta_alt)
+                if args.dumpfile:
+                    pickle.dump(('pts3d',(time.time(),get_e())), dumpfile, -1)
                 start_recover=True
             if start_recover:
                 #ret,R,T=recover_pos(clean=False)
@@ -484,7 +489,6 @@ def main():
                     rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
                     est_dict['rvec'] += rvec_noise               
                 resPnP,Rvec,Tvec=solve_pos(est_dict)
-                #import pdb;pdb.set_trace()
                 #ffff
                 if resPnP:
                     Rest,_=cv2.Rodrigues(Rvec)
@@ -493,12 +497,15 @@ def main():
                         filt_campos=cam_pos
                     w=0.0
                     filt_campos = filt_campos*w+cam_pos*(1-w)
-                    payload = ('camera',(time.time(),Rest,filt_campos.A1))
+                    tsync=time.time()
+                    payload = ('camera',(tsync,Rest,filt_campos.A1))
                     if not args.headless:
                         view3d.send(payload)
                         pts3d=get_e()
                         view3d.send(('pts3d',pts3d)) 
                     if args.dumpfile:
+                        if type(ret) is dict and 'odata' in ret:
+                            pickle.dump(('odata',(tsync,ret['odata'])),dumpfile,-1)
                         pickle.dump(payload,dumpfile,-1)
                 else:
                     print('Error failed pnp')

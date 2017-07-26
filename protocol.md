@@ -32,7 +32,7 @@ python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrac
 		 	--pnp 3 --ftrang=140 --rest --rotation_bounds="3.0,3.0,3.0"  --headless --dumpfile=out/optilive12_pnp_3_constrains.pkl
 
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test12\
- 			--pnp 2 --ftrang=140 --rest --rotation_bounds="3.0,3.0,3.0"   --headless --dumpfile=out/optilive12_pnp_2_constrains.pkl
+ 			--pnp 2 --ftrang=140 --rest --rotation_bounds="1.0,1.0,1.0"  --headless --dumpfile=out/optilive12_pnp_2_constrains.pkl
 
 
 python localization.py --video_type=live_rec_gy86 --video data/manuvers_optitrack/test11\

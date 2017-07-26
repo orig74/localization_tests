@@ -53,7 +53,7 @@ def manuver2():
             if rot_pitch>0:
                 pitch_sign=1 if (ind%rot_pitch)<(rot_pitch//2) else -1
                 vec[3]+=pitch_sign*0.3/180.0*np.pi
-                vec[5]+=pitch_sign*0.3/180.0*np.pi
+                vec[5]+=pitch_sign*0.1/180.0*np.pi
                 vec[2]+=pitch_sign*0.001
             if rot_roll>0:
                 roll_sign=1 if (ind%rot_roll)<(rot_roll//2) else -1

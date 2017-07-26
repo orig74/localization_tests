@@ -481,10 +481,13 @@ def main():
                         est_dict['rvec']=R_vec.flatten()
                     if args.zest: 
                         est_dict['alt']=est_alt
-                    
+                   
+                    payload = ('camera_gt',(time.time(),rmat,(0,0,est_alt)))
                     if not args.headless:
-                        view3d.send(('camera_gt',(time.time(),rmat,(0,0,est_alt))))
-
+                        view3d.send(payload)
+                    if args.dumpfile:
+                        pickle.dump(payload,dumpfile,-1)
+ 
                 if 'rvec' in est_dict and args.rvec_noise>0: 
                     rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
                     est_dict['rvec'] += rvec_noise               

@@ -66,5 +66,103 @@ def myPnP_Euler(  pts3d, pts2d, K, distortion,
     #res=brute(cost,zip(*estimation_bounds))
 
     #print('X=',res.message)
-    print('X=',res.x)
+    #print('X=',res.x)
     return True,res.x
+
+
+class ContSolvePnP(object):
+    def __init__(self, K,distortion):
+        self.K=K
+        self.distortion=distortion
+
+class ContSolvePnPopenCV(ContSolvePnP):
+    def __init__(self,*args,**kargs):
+        super().__init__(*args,**kargs)
+        self.X0= np.array(\
+                        [   0.0,0.0,0.0, #rvec
+                            0.0,0.0,-7.0, # strting at positive alt Tvec=-Camera_pos
+                            ])
+
+    def solve(self,pts3d,p2):
+            Rvec=self.X0[:3]
+            Tvec=self.X0[3:]
+            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,self.K,self.distortion,Rvec,Tvec,True)
+            self.X0[:3]=Rvec
+            self.X0[3:]=Tvec
+            return resPnP,Rvec,Tvec
+
+
+class ContSolvePnPBound(ContSolvePnP):
+    def __init__(self, rotation_bounds, *args, **kargs):
+        super().__init__(*args,**kargs)
+        self.X0= np.array(\
+                        [   0.0,0.0,0.0, #rvec
+                            0.0,0.0,0.5, # strting at positive alt Tvec=-Camera_pos
+                            ])
+        self.rotation_bounds=rotation_bounds
+
+
+class ContSolvePnPAxisAng(ContSolvePnPBound):
+    def solve(self,pts3d,p2,estimate):
+        Rvec = estimate.get('rvec',self.X0[:3])
+        Rmat,_=cv2.Rodrigues(Rvec)
+        cam_pos = self.X0[3:]
+        bounds=([-np.inf]*6,[np.inf]*6) 
+        if 'alt' in estimate:
+            cam_pos[2]=estimate['alt'] 
+            zeps=0.1
+            bounds[0][5]=cam_pos[2]-zeps
+            bounds[1][5]=cam_pos[2]+zeps
+
+        if 'rvec' in estimate:
+            reps=np.radians(self.rotation_bounds)
+            bounds[0][:3] = Rvec - reps
+            bounds[1][:3] = Rvec + reps
+        estimation_vec = np.clip(self.X0,bounds[0],bounds[1])
+        resPnP,res=myPnP_axisAng(pts3d,p2,self.K,self.distortion,
+                    estimation_vec, bounds)
+        Rvec = res[:3]
+        Rmat,_ = cv2.Rodrigues(Rvec)
+        Tvec = -Rmat @ res[3:] #convert camera position to Tvec to be compatible with solvepnp
+        return resPnP,Rvec,Tvec
+
+class ContSolvePnPEulerAng(ContSolvePnPBound):
+    def solve(self,pts3d,p2,estimate):
+        Rvec = estimate.get('rvec',self.X0[:3])
+        Rmat,_=cv2.Rodrigues(Rvec)
+        cam_pos = self.X0[3:]
+            #cam_pos = (-Rmat.T @ Tvec).flatten()
+        bounds=([-np.inf]*6,[np.inf]*6) 
+
+        if 'alt' in estimate:
+            cam_pos[2]=estimate['alt']
+            zeps=0.1
+            bounds[0][5]=cam_pos[2]-zeps
+            bounds[1][5]=cam_pos[2]+zeps
+
+        eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
+                
+        if 'rvec' in estimate:
+            reps=np.radians(self.rotation_bounds)
+            #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
+            bounds[0][:3] = eu_angls - reps
+            bounds[1][:3] = eu_angls + reps
+        
+        estimation_vec = np.clip(self.X0,bounds[0],bounds[1])
+        
+        resPnP,res=myPnP_Euler(pts3d,p2,self.K,self.distortion,
+                    estimation_vec, bounds)
+        self.X0=res
+        Rvec,_=cv2.Rodrigues(utils.eulerAnglesToRotationMatrix(res[:3]))
+
+            #converting camera position to Tvec
+        Rmat,_=cv2.Rodrigues(Rvec)
+        Tvec = -Rmat @ res[3:]
+        return resPnP,Rvec,Tvec
+ 
+        
+
+
+
+
+

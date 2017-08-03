@@ -39,15 +39,14 @@ parser.add_argument("--skip", help="frames to skip in the beginning",type=int, d
 
 parser.add_argument("--point_noise",default=0, type=float, help="adding normal noise to points defult is 0")
 parser.add_argument("--rvec_noise",default=0, type=float, help="adding normal noise to attitude sensors defult is 0")
-parser.add_argument("--rotation_bounds",default='2,2,2', type=str, help="rotation bounds in the form of x,y,z")
+parser.add_argument("--rotation_bounds",default='180,180,180', type=str, help="rotation bounds in the form of x,y,z")
 parser.add_argument("--headless", help="running in headless mode",action="store_true")
 parser.add_argument("--dumpfile", help="dumping output data file name",type=str , default='')
 
 args = parser.parse_args()
 
 
-from mypnp import myPnP_axisAng 
-from mypnp import myPnP_Euler
+import mypnp
 
 N_FTRS=40
 
@@ -181,91 +180,6 @@ def triangulate(R,T,start_alt,delta_alt):
  
     #print('{:3} {:>5.2f} {:>5.2f} {:>5.2f}'.format(ret,*(rotationMatrixToEulerAngles(R)*180/math.pi)))
 
-prev_pnp_result=None
-#point_noise = np.zeros(2)
-def solve_pos(estimate):
-    global prev_pnp_result#,point_noise
-    try:
-        p2=get_c()
-        #import pdb;pdb.set_trace()
-
-
-
-        pts3d=get_e()
-
-        if args.pnp==1:
-            if prev_pnp_result is None: 
-                prev_pnp_result = np.array(\
-                        [   0.0,0.0,0.0, #rvec
-                            0.0,0.0,-7.0, # strting at positive alt Tvec=-Camera_pos
-                            ])
-            Rvec=prev_pnp_result[:3]
-            Tvec=prev_pnp_result[3:]
-            resPnP,Rvec,Tvec=cv2.solvePnP(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            prev_pnp_result[:3]=Rvec
-            prev_pnp_result[3:]=Tvec
-
-        if args.pnp>1:
-            #Tvec to cam pos
-            if prev_pnp_result is None:
-                prev_pnp_result = np.array(\
-                        [   0.0,0.0,0.0, #rvec
-                            0.0,0.0,0.5]) # strting at positive alt Camera_pos
-
-            Rvec = estimate.get('rvec',prev_pnp_result[:3])
-            Rmat,_=cv2.Rodrigues(Rvec)
-            cam_pos = prev_pnp_result[3:]
-            #cam_pos = (-Rmat.T @ Tvec).flatten()
-            bounds=([-np.inf]*6,[np.inf]*6) 
-
-            if 'alt' in estimate or args.override_alt != -1:
-                cam_pos[2]=estimate['alt'] if args.override_alt==-1 else args.override_alt
-                zeps=0.1
-                bounds[0][5]=cam_pos[2]-zeps
-                bounds[1][5]=cam_pos[2]+zeps
-
-            if args.pnp==2:
-                if 'rvec' in estimate:
-                    reps=np.radians(eval('['+args.rotation_bounds+']'))
-                    bounds[0][:3] = Rvec - reps
-                    bounds[1][:3] = Rvec + reps
-                estimation_vec = np.hstack(( Rvec, cam_pos))
-                resPnP,res=myPnP_axisAng(pts3d,p2,K,distortion,
-                        estimation_vec, bounds)
-                Rvec = res[:3]
-
-            if args.pnp==3:
-                eu_angls=utils.rotationMatrixToEulerAngles(Rmat)
-                
-                if 'rvec' in estimate:
-                    reps=np.radians(eval('['+args.rotation_bounds+']')) 
-                    #yaw pitch roll !!! todo: solve the 180 problem maybe transfer point first!!!
-                    bounds[0][:3] = eu_angls - reps
-                    bounds[1][:3] = eu_angls + reps
-
-                estimation_vec = np.hstack(( eu_angls , cam_pos))
-                prev_pnp_result = np.clip( prev_pnp_result, bounds[0], bounds[1])
-                resPnP,res=myPnP_Euler(pts3d,p2,K,distortion,
-                         prev_pnp_result, bounds)
-                prev_pnp_result = res
-                Rvec,_=cv2.Rodrigues(utils.eulerAnglesToRotationMatrix(res[:3]))
-
-            #converting camera position to Tvec
-            Rmat,_=cv2.Rodrigues(Rvec)
-            Tvec = -Rmat @ res[3:]
-            #resPnP,Rvec,Tvec,inliers=cv2.solvePnPRansac(pts3d,p2,K,distortion,Rvec,Tvec,True)
-            
-
-        #if resPnP:
-        #    print('len=',len(features_state),np.ravel(Tvec))
-        return resPnP,Rvec,Tvec.flatten()
-    except Exception:
-        print("Exception in user code:")
-        print("-"*60)
-        traceback.print_exc(file=sys.stdout)
-        print("-"*60)
-
-        import pdb;pdb.set_trace()
 
 
 
@@ -379,6 +293,19 @@ def main():
     if args.dumpfile:
         dumpfile = open(args.dumpfile,'wb')
 
+
+
+    if args.pnp==1:
+        pnpclass = mypnp.ContSolvePnPopenCV
+        spnp=pnpclass(K,distortion)
+    else:
+        if args.pnp==2:
+            pnpclass = mypnp.ContSolvePnPAxisAng
+        if args.pnp==3:
+            pnpclass = mypnp.ContSolvePnPEulerAng
+        spnp=pnpclass(eval('['+args.rotation_bounds+']'),K,distortion)
+
+
     cnt=0
     start_recover=False
     delta_alt=-1
@@ -490,8 +417,12 @@ def main():
  
                 if 'rvec' in est_dict and args.rvec_noise>0: 
                     rvec_noise = 0.999*rvec_noise+0.001*np.random.normal(0,args.rvec_noise,3)
-                    est_dict['rvec'] += rvec_noise               
-                resPnP,Rvec,Tvec=solve_pos(est_dict)
+                    est_dict['rvec'] += rvec_noise    
+                if args.pnp>1:
+                    resPnP,Rvec,Tvec=spnp.solve(get_e(),get_c(),est_dict)
+                else:
+                    resPnP,Rvec,Tvec=spnp.solve(get_e(),get_c())
+
                 #ffff
                 if resPnP:
                     Rest,_=cv2.Rodrigues(Rvec)

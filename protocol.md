@@ -4,9 +4,12 @@
 ### problem presentation
 #### no problem 
 python localization.py --video_type=sim --pnp 1 --point_noise=0.0 --sim_npoints=4 --sim_spread=0.08 --headless --dumpfile=out/sim_pnp_1_nonoise.pkl
+python localization.py --video_type=sim --pnp 3 --point_noise=0.0 --sim_npoints=4 --sim_spread=0.08 --headless --dumpfile=out/sim_pnp_3_nonoise.pkl
 
 #### local minima error
 python localization.py --video_type=sim --pnp 1 --point_noise=0.01 --sim_npoints=4 --sim_spread=0.08 --headless --dumpfile=out/sim_pnp_1_noise.pkl
+#### local minima error
+python localization.py --video_type=sim --pnp 3 --point_noise=0.01 --sim_npoints=4 --sim_spread=0.08 --headless --dumpfile=out/sim_pnp_3_noise.pkl
 
 #### minimization with bounds
 ### applying constraints to solutions
